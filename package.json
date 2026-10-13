@@ -1,0 +1,19 @@
+{
+  "name": "nurse-surf",
+  "version": "1.0.0",
+  "description": "Endless runner in pixel art ambientato in ospedale. Regalo personalizzato.",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "check": "node scripts/check.js",
+    "build": "node scripts/build-www.js",
+    "android:init": "npm run build && npx cap add android",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  }
+}

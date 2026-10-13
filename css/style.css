@@ -1,0 +1,16 @@
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; height: 100%; background: #0d1520; overflow: hidden;
+  overscroll-behavior: none; touch-action: none; user-select: none;
+  -webkit-user-select: none; -webkit-touch-callout: none;
+}
+#wrap {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+/* Le dimensioni del canvas vengono calcolate in main.js (resize) mantenendo il rapporto 9:16 */
+canvas#game {
+  display: block; width: 180px; height: 320px;
+  image-rendering: pixelated; image-rendering: crisp-edges;
+  background: #1b2a41; touch-action: none;
+}
