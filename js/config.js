@@ -12,7 +12,8 @@ const CFG = {
   // Gameplay
   START_SPEED: 1.0,     // unita' di profondita' al secondo
   MAX_SPEED: 2.1,
-  SPEED_GAIN: 0.018,    // incremento al secondo
+  SPEED_GAIN: 0.014,    // incremento al secondo
+  RAMP_TIME: 70,        // secondi per arrivare alla difficolta' massima
   JUMP_TIME: 0.7,
   JUMP_PEAK: 46,        // altezza massima del salto (unita')
   HERO_K: 1.4,          // scala di Martina nel gioco
@@ -21,8 +22,15 @@ const CFG = {
   CHASER_START_GAP: 0.55,  // 0..1, distanza dell'inseguitrice (1 = lontanissima)
   CHASER_CLOSE_STEP: 0.22, // quanto si avvicina dopo ogni errore
   MAX_HITS: 3,
-  // Finale: dopo quanti secondi di corsa compare il corridoio speciale
-  FINALE_AFTER: 38,
+  // Obiettivo: 150 CFU totali. Ogni medaglietta ne vale CFU_PER_MEDAL.
+  // A UNI_AT_CFU l'ospedale finisce e comincia l'universita'; a CFU_GOAL si apre il corridoio del finale.
+  CFU_GOAL: 150,
+  CFU_PER_MEDAL: 3,
+  UNI_AT_CFU: 60,
+  ZONES: {
+    hospital: { bubbles: ['SOLO UNA PUNTURINA!', 'FERMA LI!', 'NON FA MALE!', 'VIENI QUI!'] },
+    uni: { gate: "UNIVERSITA'", banner: "BENVENUTA ALL'UNIVERSITA'!", bubbles: ['ANCHE ALL\'UNI!', 'TI TROVO OVUNQUE!', 'RICHIAMO VACCINALE!', 'VIENI QUI!'] }
+  },
   DEPTH_MAX: 1.0,
   // Aspetto della protagonista (coerente in tutto il gioco)
   HERO: {

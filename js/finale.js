@@ -167,7 +167,7 @@ function FinaleScene(app, params) {
     }
     if (p >= 1) {
       if (CFG.FINALE.subtitle) Px.text(ctx, CFG.FINALE.subtitle, CX, 72, '#ffffff', 2, 'center', PAL.ink);
-      Px.text(ctx, 'PUNTI ' + score + '   CFU ' + cfu, CX, 86, '#fff3b0', 2, 'center', PAL.ink);
+      Px.text(ctx, 'PUNTI ' + score + '   CFU ' + cfu + '/' + CFG.CFU_GOAL, CX, 86, '#fff3b0', 2, 'center', PAL.ink);
     }
   }
 

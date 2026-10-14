@@ -160,7 +160,107 @@ const Props = (() => {
       R(c, 62, 34, 14, 10, '#1d2b3a'); R(c, 64, 36, 10, 4, '#58ff9a');
       for (let i = 0; i < 9; i++) R(c, 63 + (i % 3) * 5, 50 + ((i / 3) | 0) * 7, 4, 4, '#cfd6dc');
       R(c, 8, 122, 68, 30, '#1d2b3a'); R(c, 12, 126, 60, 22, '#0b1118'); R(c, 8, 154, 68, 4, PAL.redDark);
-    } }
+    } },
+
+    // ================= UNIVERSITA' =================
+    // da SALTARE: oggetti bassi con base a righe gialle e nere
+    books: { kind: 'jump', clear: 30, len: 0.16, w: 96, h: 64, draw(c) {
+      const bk = [['#3e7bd6', '#6ea0ec', '#27559c', 6, 76], ['#e0344b', '#f06277', '#a82036', 14, 70], ['#3bb273', '#6fd9a2', '#26875a', 2, 80], ['#8e5bd1', '#b48ae6', '#5f3a96', 12, 68]];
+      let y = 46;
+      bk.forEach((b, i) => {
+        B(c, b[3], y, b[4], 12, b[0], b[1], b[2]);
+        R(c, b[3] + b[4] - 5, y + 2, 4, 8, '#fdf6e0');                 // pagine
+        R(c, b[3] + 5, y + 4, 12, 2, '#f6c344'); R(c, b[3] + 5, y + 8, 8, 1, '#f6c344');   // titolo sul dorso
+        y -= 12;
+      });
+      // libro aperto in cima, con la matita
+      R(c, 14, 0, 30, 4, '#fdf6e0'); R(c, 44, 0, 30, 4, '#fdf6e0'); R(c, 43, 0, 2, 4, '#b9c6cd');
+      L(c, 60, 2, 86, -2, 2, '#f6c344');
+      stripes(c, 2, 58, 92, 6, INK, '#ffd23f', 5);
+    } },
+    backpacks: { kind: 'jump', clear: 30, len: 0.16, w: 104, h: 64, draw(c) {
+      for (const [x, col, hi, lo] of [[4, '#e0344b', '#f06277', '#a82036'], [54, '#3e7bd6', '#6ea0ec', '#27559c']]) {
+        E(c, x + 22, 26, 22, 22, col); B(c, x, 28, 44, 28, col, hi, lo);
+        L(c, x + 12, 12, x + 32, 12, 3, '#46515c');                    // maniglia
+        B(c, x + 8, 38, 28, 16, lo, hi, '#0b1118'); R(c, x + 10, 40, 24, 1, '#d3dce2'); E(c, x + 22, 42, 2, 2, '#f6c344');
+        R(c, x + 6, 30, 32, 1, '#d3dce2'); E(c, x + 22, 30, 2, 2, '#f6c344');
+        R(c, x + 3, 30, 4, 22, lo); R(c, x + 37, 30, 4, 22, lo);       // spallacci
+      }
+      Px.text(c, 'UNI', 70, 22, '#ffffff', 1, 'left');
+      stripes(c, 2, 56, 100, 6, INK, '#ffd23f', 5);
+    } },
+    papers: { kind: 'jump', clear: 28, len: 0.15, w: 100, h: 62, draw(c) {
+      B(c, 4, 32, 50, 24, '#ffffff', '#ffffff', '#b9c6cd'); R(c, 4, 40, 50, 8, '#3e7bd6'); Px.text(c, 'A4', 22, 40, '#ffffff', 1, 'left');
+      B(c, 56, 40, 40, 16, '#ffffff', '#ffffff', '#b9c6cd'); R(c, 56, 45, 40, 6, '#e0344b');
+      // fogli sparsi con voto
+      for (const [x, y, a] of [[10, 18, -0.2], [28, 14, 0.15], [66, 28, 0.1]]) {
+        c.save(); c.translate(x + 14, y + 10); c.rotate(a); R(c, -14, -10, 28, 20, '#ffffff'); R(c, -14, -10, 28, 1, '#cfd6dc');
+        for (let i = 0; i < 3; i++) R(c, -10, -6 + i * 5, 20 - i * 4, 1, '#8c97a1');
+        c.restore();
+      }
+      Px.text(c, '30', 80, 30, PAL.red, 2, 'left');
+      stripes(c, 2, 56, 96, 6, INK, '#ffd23f', 5);
+    } },
+
+    // da SCHIVARE: oggetti alti, si cambia corsia
+    prof: { kind: 'block', clear: 99, len: 0.16, w: 104, h: 164, draw(c) {
+      // gambe e scarpe
+      R(c, 36, 112, 12, 40, '#2f3340'); R(c, 54, 112, 12, 40, '#2f3340'); R(c, 36, 112, 3, 40, '#47506a');
+      E(c, 42, 154, 9, 5, '#1d1d24'); E(c, 60, 154, 9, 5, '#1d1d24');
+      // giacca di tweed con toppe sui gomiti
+      B(c, 28, 62, 46, 54, '#9a7444', '#b88f58', '#6f5230');
+      R(c, 43, 64, 16, 44, '#ffffff'); L(c, 51, 64, 51, 108, 1, '#d3dce2');
+      L(c, 44, 64, 50, 80, 2, '#6f5230'); L(c, 58, 64, 52, 80, 2, '#6f5230');     // risvolti
+      for (let i = 0; i < 3; i++) R(c, 50, 84 + i * 8, 2, 2, '#46515c');
+      // papillon rosso
+      R(c, 45, 62, 12, 7, PAL.red); R(c, 49, 63, 4, 5, PAL.redDark);
+      // braccio sinistro con foglio del voto
+      L(c, 32, 70, 22, 100, 9, '#9a7444'); E(c, 21, 103, 5, 5, SKIN);
+      B(c, 2, 76, 40, 36, '#ffffff', '#ffffff', '#b9c6cd'); R(c, 18, 72, 8, 6, '#6b747d');
+      Px.text(c, '18', 22, 86, PAL.red, 3, 'center');
+      R(c, 8, 106, 28, 1, '#8c97a1');
+      // braccio destro alzato con puntatore
+      L(c, 70, 70, 84, 52, 9, '#9a7444'); E(c, 85, 48, 5, 5, SKIN); R(c, 78, 56, 6, 5, '#f7efdc');
+      L(c, 86, 46, 98, 14, 3, '#b5834a');
+      // testa: capelli grigi, occhiali, baffi
+      E(c, 51, 38, 15, 18, SKIN); E(c, 51, 24, 17, 10, '#cfd3da'); E(c, 36, 36, 5, 10, '#cfd3da'); E(c, 66, 36, 5, 10, '#cfd3da');
+      R(c, 41, 34, 9, 7, '#ffffff'); R(c, 54, 34, 9, 7, '#ffffff'); R(c, 44, 35, 4, 6, '#3a2210'); R(c, 57, 35, 4, 6, '#3a2210');
+      for (const x of [40, 53]) { R(c, x, 33, 11, 1, INK); R(c, x, 41, 11, 1, INK); R(c, x, 33, 1, 9, INK); R(c, x + 10, 33, 1, 9, INK); }
+      R(c, 50, 36, 3, 1, INK);
+      R(c, 44, 31, 7, 2, '#8c93a0'); R(c, 54, 31, 7, 2, '#8c93a0');          // sopracciglia
+      E(c, 51, 47, 8, 3, '#cfd3da'); R(c, 46, 52, 11, 2, '#b9524f');
+    } },
+    bookshelf: { kind: 'block', clear: 99, len: 0.17, w: 98, h: 172, draw(c) {
+      B(c, 4, 22, 90, 148, '#8a5a2f', '#b5834a', '#5f3b1a');
+      const cols = ['#3e7bd6', '#e0344b', '#3bb273', '#f6c344', '#8e5bd1', '#ffffff', '#f28c28'];
+      for (let sh = 0; sh < 4; sh++) {
+        const y0 = 28 + sh * 36;
+        R(c, 9, y0, 80, 30, '#3a2412');
+        let x = 11;
+        for (let i = 0; i < 14 && x < 85; i++) {
+          const w = 4 + ((i * 3 + sh) % 4), h = 20 + ((i * 5 + sh * 3) % 9);
+          R(c, x, y0 + 30 - h, w, h, cols[(i + sh * 2) % cols.length]); R(c, x, y0 + 30 - h, 1, h, 'rgba(255,255,255,0.35)');
+          x += w + 1;
+        }
+        R(c, 6, y0 + 30, 86, 5, '#b5834a'); R(c, 6, y0 + 30, 86, 1, '#d9a76a');
+      }
+      // teschio di anatomia in cima
+      E(c, 49, 12, 12, 11, '#f4f1e6'); R(c, 40, 18, 18, 6, '#f4f1e6'); E(c, 44, 12, 3, 4, INK); E(c, 54, 12, 3, 4, INK); R(c, 48, 16, 2, 3, '#b9b4a4');
+      for (let i = 0; i < 4; i++) R(c, 43 + i * 4, 21, 2, 3, INK);
+    } },
+    whiteboard: { kind: 'block', clear: 99, len: 0.16, w: 112, h: 164, draw(c) {
+      wheel(c, 24, 154, 8); wheel(c, 88, 154, 8);
+      R(c, 18, 140, 76, 5, '#8c97a1'); R(c, 54, 80, 6, 62, '#9aa5af');
+      B(c, 4, 6, 104, 76, '#aeb8c0', '#d3dce2', '#6b747d');
+      R(c, 9, 11, 94, 66, '#fbfdfe'); R(c, 9, 11, 94, 2, '#e3ecf0');
+      Px.text(c, 'ESAME', 14, 16, '#2f6fd0', 2, 'left');
+      // cuore con battito
+      E(c, 24, 40, 9, 8, PAL.red); E(c, 40, 40, 9, 8, PAL.red); L(c, 16, 44, 32, 62, 14, PAL.red); L(c, 48, 44, 32, 62, 14, PAL.red);
+      L(c, 56, 56, 66, 56, 1, INK); L(c, 66, 56, 70, 40, 1, INK); L(c, 70, 40, 76, 68, 1, INK); L(c, 76, 68, 80, 56, 1, INK); L(c, 80, 56, 100, 56, 1, INK);
+      L(c, 62, 28, 100, 28, 1, '#3bb273'); L(c, 62, 34, 92, 34, 1, '#3bb273');
+      // pennarelli nel vassoio
+      R(c, 10, 80, 92, 4, '#8c97a1'); R(c, 20, 77, 14, 3, '#e0344b'); R(c, 38, 77, 14, 3, '#3e7bd6'); R(c, 56, 77, 14, 3, '#1d2b3a');
+    } },
   };
 
   // ---- cartelli di reparto appesi al soffitto (alti quanto il corridoio: le catene arrivano in cima) ----
@@ -168,7 +268,11 @@ const Props = (() => {
     rx:     { text: 'RADIO',  col: '#3e7bd6', dark: '#27559c', light: '#6ea0ec' },
     lab:    { text: 'LAB',    col: '#3bb273', dark: '#26875a', light: '#6fd9a2' },
     cardio: { text: 'CARDIO', col: '#e0344b', dark: '#a82036', light: '#f06277' },
-    pedia:  { text: 'PEDIA',  col: '#8e5bd1', dark: '#5f3a96', light: '#b48ae6' }
+    pedia:  { text: 'PEDIA',  col: '#8e5bd1', dark: '#5f3a96', light: '#b48ae6' },
+    u_aula: { text: 'AULA 3', col: '#1f3a7a', dark: '#14275a', light: '#4a69b0' },
+    u_bib:  { text: 'BIBLIO', col: '#3bb273', dark: '#26875a', light: '#6fd9a2' },
+    u_esami:{ text: 'ESAMI',  col: '#e0344b', dark: '#a82036', light: '#f06277' },
+    u_lez:  { text: 'LEZIONE', col: '#8e5bd1', dark: '#5f3a96', light: '#b48ae6' }
   };
   const SIGN_H = 436;            // = altezza del corridoio (218 unita') in pixel sprite
   const SIGN_BOTTOM = SIGN_H - 92;   // il bordo inferiore sta 46 unita' sopra il pavimento
@@ -244,6 +348,13 @@ const Props = (() => {
     block: ['gurney1', 'gurney2', 'wheelchair', 'cart', 'vending'],
     slide: ['rx', 'lab', 'cardio', 'pedia']
   };
+  // Ostacoli dell'universita': libri, zaini, risme di fogli / professore, libreria, lavagna, distributore / cartelli di aula
+  const UNI_TYPES = {
+    jump: ['books', 'backpacks', 'papers', 'wetsign'],
+    block: ['prof', 'bookshelf', 'whiteboard', 'vending'],
+    slide: ['u_aula', 'u_bib', 'u_esami', 'u_lez']
+  };
+  const SETS = { hospital: TYPES, uni: UNI_TYPES };
 
-  return { get, hint, medal, TYPES };
+  return { get, hint, medal, TYPES, UNI_TYPES, SETS };
 })();

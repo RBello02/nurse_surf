@@ -7,7 +7,7 @@ const Hero = (() => {
   const cache = {};
   const HAIR_HI = '#8a6240';
   const OUT = {
-    casual:   { top: '#f08fb0', topHi: '#f8b3cb', topLo: '#c96a8e', pants: '#3e7bd6', pantsHi: '#6ea0ec', pantsLo: '#27559c', shoe: '#ffffff', sole: '#8c97a1', accent: '#e0344b' },
+    casual:   { top: '#1c1c23', topHi: '#3a3a46', topLo: '#0c0c11', pants: '#1c1c23', pantsHi: '#3a3a46', pantsLo: '#0c0c11', shoe: '#7a1f35', sole: '#2a1a1e', accent: '#ffffff' },
     elegante: { top: '#8f978c', topHi: '#aab1a5', topLo: '#6e766b', pants: '#8f978c', pantsHi: '#aab1a5', pantsLo: '#6e766b', shoe: '#6b2230', sole: '#2a1a1e', accent: '#b33a3a', bag: '#4a4650' },
     uniforme: { top: '#2fb5a3', topHi: '#58d3c1', topLo: '#238f80', pants: '#2a9f8f', pantsHi: '#4fc4b3', pantsLo: '#1f7a6d', shoe: '#ffffff', sole: '#8c97a1', accent: '#e0344b' }
   };
@@ -44,6 +44,13 @@ const Hero = (() => {
         Px.line(ctx, l[1][0], l[1][1], l[2][0], l[2][1] - 3, 11, o.pants);
         Px.line(ctx, l[0][0] - 2, l[0][1], l[1][0] - 2, l[1][1], 1, o.pantsHi);
         Px.line(ctx, l[1][0] + 2, l[1][1], l[2][0] + 2, l[2][1] - 3, 1, o.pantsLo);
+      } else if (outfit === 'casual') {
+        // pantalone baloon nero: largo in alto, stretto alla caviglia, scarpe bordeaux che spuntano
+        shoe(ctx, o, l[2][0], l[2][1] + 3);
+        Px.line(ctx, l[0][0], l[0][1], l[1][0], l[1][1], 11, o.pants);
+        Px.line(ctx, l[1][0], l[1][1], l[2][0], l[2][1] - 5, 9, o.pants);
+        Px.line(ctx, l[0][0] - 3, l[0][1] + 1, l[1][0] - 3, l[1][1], 1, o.pantsHi);
+        Px.ell(ctx, l[2][0], l[2][1] - 4, 4, 2, o.pantsLo);     // fondo gamba arricciato
       } else {
         limb(ctx, l, 7, o.pants, o.pantsHi);
         shoe(ctx, o, l[2][0], l[2][1] + 3);
@@ -58,7 +65,12 @@ const Hero = (() => {
       limb(ctx, a, 5, H.skin, '#f7d9bd');
       // manica
       if (outfit === 'uniforme') Px.line(ctx, a[0][0], a[0][1], a[0][0] + (a[1][0] - a[0][0]) * 0.55, a[0][1] + (a[1][1] - a[0][1]) * 0.55, 7, o.top);
-      else if (outfit === 'casual') Px.line(ctx, a[0][0], a[0][1], a[0][0] + (a[1][0] - a[0][0]) * 0.4, a[0][1] + (a[1][1] - a[0][1]) * 0.4, 7, o.top);
+      else if (outfit === 'casual') {   // manica lunga del blazer fino al polso, con polsino bianco
+        Px.line(ctx, a[0][0], a[0][1], a[1][0], a[1][1], 7, o.top);
+        const wx = a[1][0] + (a[2][0] - a[1][0]) * 0.8, wy = a[1][1] + (a[2][1] - a[1][1]) * 0.8;
+        Px.line(ctx, a[1][0], a[1][1], wx, wy, 6, o.top);
+        Px.ell(ctx, wx, wy, 3, 2, '#ffffff');
+      }
       else if (outfit === 'elegante') Px.line(ctx, a[0][0], a[0][1], a[1][0], a[1][1], 7, o.top);  // manica lunga fino al gomito
       // mano
       Px.ell(ctx, a[2][0], a[2][1], 3, 3, H.skin);
@@ -69,11 +81,16 @@ const Hero = (() => {
   function torso(ctx, outfit) {
     const o = OUT[outfit];
     if (outfit === 'casual') {
-      Px.bev(ctx, 13, 33, 18, 19, o.top, o.topHi, o.topLo);
-      Px.ell(ctx, 22, 33, 7, 2, H.skin);                 // scollo
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(19, 40, 6, 1); ctx.fillRect(21, 38, 2, 5); // piccola stella
-      ctx.fillStyle = o.pantsLo; ctx.fillRect(13, 51, 18, 3);
-      ctx.fillStyle = '#c8cfd6'; ctx.fillRect(21, 51, 2, 3);            // fibbia
+      // blazer nero aperto su camicia bianca
+      Px.bev(ctx, 13, 33, 18, 20, o.top, o.topHi, o.topLo);
+      for (let i = 0; i < 11; i++) { ctx.fillStyle = '#ffffff'; const hw = Math.max(1, 3 - (i > 6 ? i - 6 : 0)); ctx.fillRect(22 - hw, 33 + i, hw * 2 + 1, 1); }  // camicia
+      ctx.fillStyle = '#d3dce2'; ctx.fillRect(22, 35, 1, 8);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(17, 33, 4, 2); ctx.fillRect(24, 33, 4, 2);               // colletto
+      ctx.fillStyle = H.skin; ctx.fillRect(20, 33, 5, 1);
+      Px.line(ctx, 18, 34, 21, 45, 1, o.topHi); Px.line(ctx, 27, 34, 23, 45, 1, o.topHi);               // risvolti
+      ctx.fillStyle = o.topLo; ctx.fillRect(14, 47, 6, 1); ctx.fillRect(25, 47, 6, 1);                 // tasche
+      ctx.fillStyle = '#c8cfd6'; ctx.fillRect(22, 46, 1, 1);                                           // bottone
+      ctx.fillStyle = o.topLo; ctx.fillRect(13, 51, 18, 2);
     } else if (outfit === 'elegante') {
       // tuta salvia con colletto, bottoni, tracolla rossa e borsetta
       Px.bev(ctx, 13, 33, 18, 20, o.top, o.topHi, o.topLo);
@@ -185,6 +202,7 @@ const Hero = (() => {
     shoe(ctx, o, 6, 51); shoe(ctx, o, 40, 51);
     // busto inclinato in avanti
     Px.bev(ctx, 12, 32, 20, 13, o.top, o.topHi, o.topLo);
+    if (outfit === 'casual') { ctx.fillStyle = '#ffffff'; ctx.fillRect(19, 32, 6, 7); }
     if (outfit === 'uniforme') { ctx.fillStyle = '#ffffff'; ctx.fillRect(26, 36, 4, 4); ctx.fillStyle = o.accent; ctx.fillRect(27, 37, 2, 2); }
     // braccia in avanti
     Px.line(ctx, 14, 36, 8, 42, 5, H.skin); Px.ell(ctx, 7, 43, 3, 3, H.skin);

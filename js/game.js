@@ -1,17 +1,17 @@
 // Scena di gioco: endless runner a 3 corsie nel corridoio dell'ospedale.
 function GameScene(app, outfit) {
   const W = CFG.W, H = CFG.H, PY = CFG.PLAYER_Y, HK = CFG.HERO_K;
-  const BUBBLES = ['SOLO UNA PUNTURINA!', 'FERMA LI!', 'NON FA MALE!', 'VIENI QUI!'];
   const fx = Fx.create();
 
   // Stato del mondo (letto da World.render)
-  const st = { T: 0, specialStart: Infinity, endW: null, doorOpen: 0 };
+  const st = { T: 0, specialStart: Infinity, uniStart: Infinity, endW: null, doorOpen: 0 };
 
   const g = {
     time: 0, speed: CFG.START_SPEED,
     lane: 1, laneF: 1, jumpT: 0, slideT: 0,
     objs: [], nextRowW: 2.6,
-    hits: 0, cfu: 0, healCount: 0, invul: 0, stumble: 0, sinceHit: 0,
+    zone: 'hospital', zoneBannerT: 0, uniGate: false,
+    hits: 0, cfu: 0, medals: 0, healCount: 0, invul: 0, stumble: 0, sinceHit: 0,
     gapTarget: CFG.CHASER_START_GAP, gapV: CFG.CHASER_START_GAP, chaserLane: 1,
     phase: 'run',          // run | corridor | caught | over | finishing
     phaseT: 0, shake: 0, flash: 0, paused: false,
@@ -40,15 +40,15 @@ function GameScene(app, outfit) {
     const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
     let used;
     if (x < 0.55 - d * 0.25) {
-      add(lanes[0], pick(Props.TYPES[pick(KINDS)]), w); used = [lanes[0]];
+      add(lanes[0], pick(Props.SETS[g.uniGate ? 'uni' : 'hospital'][pick(KINDS)]), w); used = [lanes[0]];
     } else if (x < 0.88 - d * 0.1) {
-      for (let i = 0; i < 2; i++) add(lanes[i], pick(Props.TYPES[pick(KINDS)]), w);
+      for (let i = 0; i < 2; i++) add(lanes[i], pick(Props.SETS[g.uniGate ? 'uni' : 'hospital'][pick(KINDS)]), w);
       used = [lanes[0], lanes[1]];
     } else {
       // tutte e tre le corsie: almeno una non e' un blocco (si supera con salto o scivolata)
       const ks = [pick(KINDS), pick(KINDS), pick(KINDS)];
       if (ks.every((k) => k === 'block')) ks[(Math.random() * 3) | 0] = pick(['jump', 'slide']);
-      for (let i = 0; i < 3; i++) add(lanes[i], pick(Props.TYPES[ks[i]]), w);
+      for (let i = 0; i < 3; i++) add(lanes[i], pick(Props.SETS[g.uniGate ? 'uni' : 'hospital'][ks[i]]), w);
       used = [0, 1, 2];
     }
     const free = [0, 1, 2].filter((l) => !used.includes(l));
@@ -56,14 +56,23 @@ function GameScene(app, outfit) {
   }
 
   function updateSpawn() {
-    const d = Px.clamp(g.time / CFG.FINALE_AFTER, 0, 1);
+    const d = Px.clamp(g.time / CFG.RAMP_TIME, 0, 1);
     while (g.nextRowW < st.T + 3.1) {
-      if (g.time >= CFG.FINALE_AFTER - 3) { startCorridor(); break; }
+      if (g.cfu >= CFG.CFU_GOAL) { startCorridor(); break; }
+      if (!g.uniGate && g.cfu >= CFG.UNI_AT_CFU) startUni();
       spawnRow(g.nextRowW, d);
       const gapW = Px.lerp(1.25, 0.88, d) * g.speed;
       if (Math.random() < 0.5) cfuLine(g.nextRowW + gapW * 0.35, (Math.random() * 3) | 0);
       g.nextRowW += gapW;
     }
+  }
+
+  // Passaggio dall'ospedale all'universita': arco d'ingresso, poi nuove pareti, pavimento e ostacoli
+  function startUni() {
+    g.uniGate = true;
+    st.uniStart = g.nextRowW + 0.5;
+    g.nextRowW = st.uniStart + 0.8;
+    g.zoneChangeW = st.uniStart;
   }
 
   function startCorridor() {
@@ -103,7 +112,7 @@ function GameScene(app, outfit) {
     g.hits++;
     g.invul = 1.4; g.stumble = 0.8; g.shake = 0.35; g.sinceHit = 0;
     g.gapTarget = CFG.CHASER_START_GAP - g.hits * CFG.CHASER_CLOSE_STEP;
-    g.bubble = pick(BUBBLES); g.bubbleT = 1.6;
+    g.bubble = pick(CFG.ZONES[g.zone].bubbles); g.bubbleT = 1.6;
     Sfx.hit();
     fx.burst(World.laneXf(g.laneF, 1), PY - 26, ['#ffd23f', '#ffffff', '#e0344b'], 18, 80, 0.5, 120);
     if (g.hits >= CFG.MAX_HITS) {
@@ -120,7 +129,7 @@ function GameScene(app, outfit) {
       const dl = Math.abs(g.laneF - o.lane);
       if (o.p.kind === 'pickup') {
         if (dl > 0.7) continue;
-        o.done = true; g.cfu++; g.healCount++;
+        o.done = true; g.medals++; g.cfu = Math.min(CFG.CFU_GOAL, g.cfu + CFG.CFU_PER_MEDAL); g.healCount++;
         Sfx.coin();
         fx.burst(World.laneXf(o.lane, 1), PY - 40, ['#ffe27a', '#ffffff', '#c9962a'], 10, 45, 0.4, 20);
         if (g.healCount >= 6) {
@@ -177,6 +186,8 @@ function GameScene(app, outfit) {
     if (g.phase !== 'run') g.gapTarget = 1.1;
     g.gapV += (g.gapTarget - g.gapV) * Math.min(1, dt * 3);
 
+    if (g.zoneChangeW != null && st.T >= g.zoneChangeW && g.zone !== 'uni') { g.zone = 'uni'; g.zoneBannerT = 3; Sfx.start(); }
+    g.zoneBannerT = Math.max(0, g.zoneBannerT - dt);
     if (g.phase === 'run' || g.phase === 'corridor') updateSpawn();
 
     if (st.endWTarget != null && st.endW == null && st.endWTarget - st.T <= 3.0) st.endW = st.endWTarget;
@@ -291,15 +302,25 @@ function GameScene(app, outfit) {
     Px.rect(ctx, PAUSE_BTN.x + 5, PAUSE_BTN.y + 4.5, 2.5, 8, '#fff');
     Px.rect(ctx, PAUSE_BTN.x + 10, PAUSE_BTN.y + 4.5, 2.5, 8, '#fff');
     // progresso verso il finale
-    const prog = Px.clamp(g.time / CFG.FINALE_AFTER, 0, 1);
+    const prog = Px.clamp(g.cfu / CFG.CFU_GOAL, 0, 1);
     Px.rect(ctx, 5, 25, W - 10, 6, PAL.ink);
     Px.rect(ctx, 6, 26, W - 12, 4, '#3a4350');
-    Px.rect(ctx, 6, 26, (W - 12) * prog, 4, PAL.gold);
+    Px.rect(ctx, 6, 26, (W - 12) * prog, 4, g.zone === 'uni' ? '#6ea0ec' : PAL.gold);
+    Px.rect(ctx, 6 + (W - 12) * CFG.UNI_AT_CFU / CFG.CFU_GOAL, 25, 1, 6, '#ffffff');   // inizio universita'
     Px.rect(ctx, W - 11, 23, 6, 10, PAL.ink);
     Px.rect(ctx, W - 10, 24, 4, 8, '#3fb858');
     // CFU raccolti
     ctx.drawImage(medalImg, 4, 36, medalImg.width * 0.25, medalImg.height * 0.25);
-    Px.text(ctx, 'x' + g.cfu, 22, 40, '#ffe27a', 3, 'left', PAL.ink);
+    Px.text(ctx, g.cfu + '/' + CFG.CFU_GOAL + ' CFU', 22, 40, '#ffe27a', 3, 'left', PAL.ink);
+    // cartello di benvenuto all'universita'
+    if (g.zoneBannerT > 0) {
+      ctx.globalAlpha = Px.clamp(g.zoneBannerT / 0.6, 0, 1);
+      Px.rect(ctx, 8, 100, W - 16, 40, 'rgba(16,21,31,0.7)');
+      Px.rect(ctx, 8, 100, W - 16, 2, '#f6c344'); Px.rect(ctx, 8, 138, W - 16, 2, '#f6c344');
+      Px.text(ctx, 'BENVENUTA', W / 2, 108, '#ffffff', 3, 'center', PAL.ink);
+      Px.text(ctx, "ALL'UNIVERSITA'!", W / 2, 122, '#f6c344', 3, 'center', PAL.ink);
+      ctx.globalAlpha = 1;
+    }
     // tutorial
     if (g.time < 5 && g.phase === 'run') {
       ctx.globalAlpha = Px.clamp((5 - g.time) / 0.8, 0, 1);
@@ -319,6 +340,7 @@ function GameScene(app, outfit) {
     if (g.shake > 0) ctx.translate((Math.random() - 0.5) * 3 * (g.shake / 0.35), (Math.random() - 0.5) * 2 * (g.shake / 0.35));
     World.render(ctx, st);
     World.drawGate(ctx, st);
+    if (g.uniGate) World.drawGate(ctx, st, st.uniStart, CFG.ZONES.uni.gate, { main: '#1f3a7a', hi: '#4a69b0', dark: '#0e1a3d' });
     const objs = g.objs.slice().sort((a, b) => b.w - a.w);
     let heroDone = false;
     for (const o of objs) {

@@ -21,6 +21,14 @@ const World = (() => {
       floorA: PAL.floorA, floorB: PAL.floorB, floorHi: '#f7fbfc', line: PAL.floorLine,
       door: '#8fa7b3', doorDark: '#6f8794', glass: '#9bd8ee', frame: '#e8eef1'
     },
+    uni: {
+      uni: true,
+      ceilA: '#f1ece1', ceilB: '#e0d9c9', light: '#fff6d6',
+      wallTop: '#efe2c8', wallBot: '#b4573d', skirt: '#4a2f1a',
+      stripeL: '#1f3a7a', stripeR: '#f6c344',
+      floorA: '#c78d55', floorB: '#b47b46', floorHi: '#e0a96f', line: '#7a4d27',
+      door: '#8a5a2f', doorDark: '#5f3b1a', glass: '#cfe3f0', frame: '#f7efdc'
+    },
     special: {
       special: true,
       ceilA: '#1d2d7a', ceilB: '#16236a', light: '#ffe9a0',
@@ -44,7 +52,7 @@ const World = (() => {
     return laneX(a, s) * (1 - t) + laneX(a + 1, s) * t;
   }
 
-  function theme(st, w) { return w >= st.specialStart ? THEMES.special : THEMES.normal; }
+  function theme(st, w) { return w >= st.specialStart ? THEMES.special : (w >= st.uniStart ? THEMES.uni : THEMES.normal); }
 
   function vr(ctx, x, Y, v0, v1, color) {
     const y1 = Y(v1), y0 = Y(v0);
@@ -80,6 +88,42 @@ const World = (() => {
       return;
     }
     const kind = Px.hash(seg * 2 + (left ? 0 : 1) + 7);
+    if (th.uni) {
+      if (kind < 0.35) {
+        // porta di un'aula in legno con targa blu
+        if (u > 0.2 && u < 0.8) {
+          const edge = u < 0.24 || u > 0.76;
+          vr(ctx, x, Y, 0.04, 0.64, edge ? th.doorDark : th.door);
+          if (!edge && u > 0.34 && u < 0.66) vr(ctx, x, Y, 0.4, 0.56, th.glass);
+          if (!edge && u > 0.68 && u < 0.72) vr(ctx, x, Y, 0.22, 0.28, PAL.gold);
+        }
+        if (u > 0.36 && u < 0.64) vr(ctx, x, Y, 0.68, 0.75, '#1f3a7a');
+      } else if (kind < 0.6) {
+        // finestra alta
+        if (u > 0.2 && u < 0.8) {
+          const frame = u < 0.24 || u > 0.76 || (u > 0.48 && u < 0.52);
+          vr(ctx, x, Y, 0.2, 0.8, th.frame);
+          if (!frame) { vr(ctx, x, Y, 0.24, 0.76, th.glass); if (u > 0.58 && u < 0.7) vr(ctx, x, Y, 0.5, 0.66, '#eaf6fc'); }
+        }
+      } else if (kind < 0.8) {
+        // bacheca di sughero con avvisi
+        if (u > 0.22 && u < 0.78) {
+          vr(ctx, x, Y, 0.3, 0.66, '#7a4d27');
+          vr(ctx, x, Y, 0.32, 0.64, '#c98f55');
+          const n = Math.floor(u * 9);
+          if (n % 2 === 0) vr(ctx, x, Y, 0.38 + (n % 3) * 0.06, 0.54 + (n % 3) * 0.04, POSTER_COLORS[(seg + n) % POSTER_COLORS.length]);
+        }
+      } else {
+        // libreria con libri colorati
+        if (u > 0.18 && u < 0.82) {
+          vr(ctx, x, Y, 0.04, 0.78, '#5f3b1a');
+          const cols = ['#3e7bd6', '#e0344b', '#3bb273', '#f6c344', '#8e5bd1', '#ffffff'];
+          const b = Math.floor(u * 28);
+          for (const [a, c2] of [[0.08, 0.26], [0.3, 0.48], [0.52, 0.7]]) vr(ctx, x, Y, a, c2, cols[(b + Math.floor(a * 10) + seg) % cols.length]);
+        }
+      }
+      return;
+    }
     if (kind < 0.45) {
       // porta di reparto
       if (u > 0.2 && u < 0.8) {
@@ -210,9 +254,11 @@ const World = (() => {
   }
 
   // Arco d'ingresso del corridoio speciale (billboard a z fissato nel mondo)
-  function drawGate(ctx, st) {
-    if (!isFinite(st.specialStart)) return;
-    const z = st.specialStart - st.T;
+  function drawGate(ctx, st, startW, txt, cols) {
+    if (startW == null) { startW = st.specialStart; txt = CFG.FINALE.gateText; }
+    if (!isFinite(startW)) return;
+    cols = cols || { main: PAL.red, hi: '#f06277', dark: PAL.redDark };
+    const z = startW - st.T;
     if (z > 3.2 || z < -0.35) return;
     const s = proj(z);
     if (s < st._sEnd) return;
@@ -220,16 +266,15 @@ const World = (() => {
     const xl = CX - WALL * s, xr = CX + WALL * s;
     const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(rq(x), rq(y), Math.max(STEP, rq(w)), Math.max(STEP, rq(h))); };
     const pw = Math.max(2, 12 * s);
-    R(xl, yF - 215 * s, pw, 215 * s, PAL.red);
-    R(xr - pw, yF - 215 * s, pw, 215 * s, PAL.red);
-    R(xl + pw * 0.3, yF - 215 * s, Math.max(1, pw * 0.25), 215 * s, '#f06277');
-    R(xl, yF - 215 * s, xr - xl, 24 * s, PAL.red);
+    R(xl, yF - 215 * s, pw, 215 * s, cols.main);
+    R(xr - pw, yF - 215 * s, pw, 215 * s, cols.main);
+    R(xl + pw * 0.3, yF - 215 * s, Math.max(1, pw * 0.25), 215 * s, cols.hi);
+    R(xl, yF - 215 * s, xr - xl, 24 * s, cols.main);
     R(xl, yF - 215 * s, xr - xl, Math.max(1, 3 * s), PAL.gold);
     R(xl, yF - 194 * s, xr - xl, Math.max(1, 3 * s), PAL.gold);
-    const txt = CFG.FINALE.gateText;
     const sc = Math.max(1, Math.floor(s * 2.4));
     if (Px.textWidth(txt, sc) <= (xr - xl) - 2 * pw) {
-      Px.text(ctx, txt, CX, yF - 213 * s + (20 * s - 7 * sc * 0.5) / 2, '#ffffff', sc, 'center', PAL.redDark);
+      Px.text(ctx, txt, CX, yF - 213 * s + (20 * s - 7 * sc * 0.5) / 2, '#ffffff', sc, 'center', cols.dark);
     }
     // lucine festive
     for (let i = 0; i <= 14; i++) {

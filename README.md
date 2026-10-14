@@ -3,7 +3,7 @@
 Endless runner in pixel art ambientato nei corridoi di un ospedale, ispirato a Subway Surfers.
 Martina (capelli castano scuro raccolti con frangia, occhi castani; nella divisa "elegante" indossa la tuta salvia con tracolla rossa) arriva all'ospedale, si presenta come studentessa di infermieristica venuta a fare il tirocinio e
 l'infermiera vuole farle la puntura con una siringa gigante "PFIZER": da qui parte la fuga. Si corre tra lettini con
-pazienti, carrelli e cartelli di reparto, raccogliendo le medagliette CFU. Dopo un po' si apre il corridoio speciale
+pazienti, carrelli e cartelli di reparto, raccogliendo le medagliette CFU. A 60 CFU l'ospedale lascia il posto all'universita' (aule in legno, librerie, bacheche; ostacoli: pile di libri, zaini, risme di fogli, professore col voto, librerie, lavagne, cartelli di aula). A 150 CFU si apre il corridoio speciale
 che porta al finale: la corona d'alloro e "CONGRATULAZIONI!".
 
 Come si riconoscono gli ostacoli (sopra ognuno compare anche un'icona):
@@ -54,7 +54,7 @@ in `android/app/src/main/AndroidManifest.xml`.
 
 ## Personalizzare
 
-- `js/config.js`: nome (`NAME`), copione della scena iniziale (`INTRO.script`: chi parla e le righe di ogni fumetto, i tempi si calcolano da soli), velocita', durata prima del finale (`FINALE_AFTER`, secondi), vite, colori dell'aspetto
+- `js/config.js`: nome (`NAME`), copione della scena iniziale (`INTRO.script`: chi parla e le righe di ogni fumetto, i tempi si calcolano da soli), velocita', obiettivo di CFU (`CFU_GOAL`, 150), CFU per medaglietta (`CFU_PER_MEDAL`), CFU a cui si passa all'universita' (`UNI_AT_CFU`, 60), frasi dell'inseguitrice per ambiente (`ZONES`), vite, colori dell'aspetto
   della protagonista (`HERO`) e testi del finale (`FINALE`: cartelli, striscione, sottotitolo).
 - `js/hero.js`: sprite della protagonista e dell'infermiera inseguitrice.
 - `js/props.js`: ostacoli (si saltano, ci si scivola sotto, oppure si cambia corsia).
