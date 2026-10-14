@@ -396,6 +396,9 @@ function GameScene(app, outfit) {
     }
     if (g.phase === 'corridor' && g.frameT % 0.05 < dt) fx.confetti(W, [PAL.red, PAL.gold, PAL.blue, PAL.green, '#fff', PAL.pink]);
 
+    if (g.phase === 'run' && g.jumpT <= 0 && g.slideT <= 0 && g.frameT % 0.11 < dt) {
+      fx.burst(World.laneXf(g.laneF, 1) + (Math.random() - 0.5) * 8, PY, ['#ffffff', '#d3dfe3', '#b7c6cc'], 1, 12, 0.35, 0);
+    }
     collide();
     g.objs = g.objs.filter((o) => o.w - st.T > -0.4);
     g.score = Math.floor(st.T * 10) + g.cfu * 25;
@@ -408,6 +411,23 @@ function GameScene(app, outfit) {
   }
 
   // ---------- disegno ----------
+  // foschia in fondo al corridoio + vignettatura ai bordi: piu' profondita'
+  let vignette = null;
+  function drawAtmosphere(ctx) {
+    if (!vignette) vignette = Px.make(W * 2, H * 2, (c) => {
+      const gr = c.createRadialGradient(W, H * 0.95, H * 0.35, W, H * 0.95, H * 1.05);
+      gr.addColorStop(0, 'rgba(8,16,36,0)'); gr.addColorStop(1, 'rgba(8,16,36,0.42)');
+      c.fillStyle = gr; c.fillRect(0, 0, W * 2, H * 2);
+    });
+    const hz = CFG.HORIZON_Y;
+    const hg = ctx.createLinearGradient(0, hz - 36, 0, hz + 46);
+    hg.addColorStop(0, 'rgba(255,252,236,0)'); hg.addColorStop(0.5, 'rgba(255,252,236,0.22)'); hg.addColorStop(1, 'rgba(255,252,236,0)');
+    ctx.fillStyle = hg; ctx.fillRect(0, hz - 36, W, 82);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(vignette, 0, 0, W, H);
+    ctx.imageSmoothingEnabled = false;
+  }
+
   function drawObj(ctx, o) {
     const z = o.w - st.T;
     if (z > 3.0 || z < -0.3 || o.done) return;
@@ -421,7 +441,17 @@ function GameScene(app, outfit) {
       y -= (26 + Math.sin(g.time * 6 + o.seed) * 3) * s;
       w *= 0.3 + 0.7 * Math.abs(Math.cos(g.time * 4 + o.seed));      // la medaglia gira su se stessa
     }
-    ctx.globalAlpha = Px.clamp((3.0 - z) / 0.7, 0, 1);
+    const fade = Px.clamp((3.0 - z) / 0.7, 0, 1);
+    if (o.p.kind === 'pickup') {                                      // alone dorato attorno alla medaglia
+      const gy = y - h / 2, r = Math.max(6, 15 * s);
+      const gr = ctx.createRadialGradient(x, gy, 1, x, gy, r);
+      gr.addColorStop(0, `rgba(255,226,122,${0.55 * fade})`); gr.addColorStop(1, 'rgba(255,226,122,0)');
+      ctx.fillStyle = gr; ctx.fillRect(x - r, gy - r, r * 2, r * 2);
+    } else if (o.p.kind !== 'slide') {                                 // ombra a terra
+      ctx.fillStyle = `rgba(16,21,31,${0.28 * fade})`;
+      ctx.beginPath(); ctx.ellipse(x, y - 0.5 * s, Math.max(4, w * 0.46), Math.max(1.5, 5 * s), 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = fade;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(img, x - w / 2, y - h, w, h);
     ctx.imageSmoothingEnabled = false;
@@ -505,6 +535,7 @@ function GameScene(app, outfit) {
     Px.rect(ctx, W - 11, 23, 6, 10, PAL.ink);
     Px.rect(ctx, W - 10, 24, 4, 8, '#3fb858');
     // CFU raccolti
+    Px.rect(ctx, 2, 34, 120, 14, 'rgba(16,21,31,0.45)'); Px.rect(ctx, 2, 34, 120, 1, 'rgba(255,255,255,0.25)');
     ctx.drawImage(medalImg, 4, 36, medalImg.width * 0.25, medalImg.height * 0.25);
     Px.text(ctx, g.cfu + '/' + CFG.CFU_GOAL + ' CFU', 22, 40, '#ffe27a', 3, 'left', PAL.ink);
     // cartello di benvenuto all'universita'
@@ -534,6 +565,7 @@ function GameScene(app, outfit) {
     ctx.save();
     if (g.shake > 0) ctx.translate((Math.random() - 0.5) * 3 * (g.shake / 0.35), (Math.random() - 0.5) * 2 * (g.shake / 0.35));
     World.render(ctx, st);
+    drawAtmosphere(ctx);
     World.drawGate(ctx, st);
     if (g.uniGate) World.drawGate(ctx, st, st.uniStart, CFG.ZONES.uni.gate, { main: '#1f3a7a', hi: '#4a69b0', dark: '#0e1a3d' });
     const objs = g.objs.slice().sort((a, b) => b.w - a.w);
