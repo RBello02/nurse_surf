@@ -14,7 +14,13 @@ Come si riconoscono gli ostacoli (sopra ognuno compare anche un'icona):
 HTML5 Canvas + JavaScript puro: nessuna dipendenza per giocare, nessun file di immagini o audio
 (sprite e suoni sono generati dal codice).
 
-## Giocare (PC o telefono sulla stessa rete Wi-Fi)
+## Gioca subito
+
+**[Apri il gioco](https://rawcdn.githack.com/RBello02/nurse_surf/a25a6ac37803ea62c07cf5fe9027df18ade06cdf/index.html)**: funziona dal browser del telefono, senza installare nulla
+(link: https://rawcdn.githack.com/RBello02/nurse_surf/a25a6ac37803ea62c07cf5fe9027df18ade06cdf/index.html).
+Il link e' fissato a una versione precisa: dopo ogni aggiornamento viene rigenerato con `node scripts/update-play-link.js`.
+
+## Giocare in locale (PC o telefono sulla stessa rete Wi-Fi)
 
 ```
 npm start
