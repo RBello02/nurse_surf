@@ -1,14 +1,14 @@
 // Martina (protagonista) e l'infermiera inseguitrice, in pixel art ad alta definizione.
 // Gli sprite sono disegnati in pixel reali (1 pixel = mezza unita' di progetto) con ellissi e segmenti,
-// poi circondati da un contorno scuro. L'aspetto di Martina (frangia, occhi castani, capelli castano chiaro
-// tendenti al biondo) e' definito qui e in CFG.HERO, quindi resta identico in menu, intro, gioco e finale.
+// poi circondati da un contorno scuro. L'aspetto di Martina (frangia laterale, occhi castani, capelli castano scuro
+// raccolti) e' definito qui e in CFG.HERO, quindi resta identico in menu, intro, gioco e finale.
 const Hero = (() => {
   const H = CFG.HERO;
   const cache = {};
-  const HAIR_HI = '#e8d3a0';
+  const HAIR_HI = '#8a6240';
   const OUT = {
     casual:   { top: '#f08fb0', topHi: '#f8b3cb', topLo: '#c96a8e', pants: '#3e7bd6', pantsHi: '#6ea0ec', pantsLo: '#27559c', shoe: '#ffffff', sole: '#8c97a1', accent: '#e0344b' },
-    elegante: { top: '#8a1f3d', topHi: '#b23358', topLo: '#5f1329', pants: '#8a1f3d', pantsHi: '#b23358', pantsLo: '#5f1329', shoe: '#1d1d24', sole: '#000000', accent: '#f6c344' },
+    elegante: { top: '#8f978c', topHi: '#aab1a5', topLo: '#6e766b', pants: '#8f978c', pantsHi: '#aab1a5', pantsLo: '#6e766b', shoe: '#6b2230', sole: '#2a1a1e', accent: '#b33a3a', bag: '#4a4650' },
     uniforme: { top: '#2fb5a3', topHi: '#58d3c1', topLo: '#238f80', pants: '#2a9f8f', pantsHi: '#4fc4b3', pantsLo: '#1f7a6d', shoe: '#ffffff', sole: '#8c97a1', accent: '#e0344b' }
   };
 
@@ -31,16 +31,23 @@ const Hero = (() => {
     Px.ell(ctx, x, y - 1, 5, 3, o.shoe);
     ctx.fillStyle = o.sole; ctx.fillRect(x - 5, y + 1, 11, 1);
     if (o.shoe === '#ffffff') { ctx.fillStyle = o.accent; ctx.fillRect(x - 2, y - 2, 4, 1); }
-    if (o.shoe === '#1d1d24') { ctx.fillStyle = o.sole; ctx.fillRect(x - 5, y - 4, 2, 7); } // tacco
+    if (o.shoe === '#6b2230') { ctx.fillStyle = o.shoe; ctx.fillRect(x - 3, y - 3, 8, 3); ctx.fillRect(x + 4, y - 1, 2, 2); } // ballerina a punta
   }
 
   function legs(ctx, outfit, pose) {
     const o = OUT[outfit], p = POSES[pose];
     for (const key of ['lL', 'lR']) {
       const l = p[key];
-      if (outfit === 'elegante') limb(ctx, l, 5, H.skin, '#f7d9bd');
-      else limb(ctx, l, 7, o.pants, o.pantsHi);
-      shoe(ctx, o, l[2][0], l[2][1] + 3);
+      if (outfit === 'elegante') {
+        shoe(ctx, o, l[2][0], l[2][1] + 3);   // scarpa sotto: il bordo largo del pantalone la copre
+        Px.line(ctx, l[0][0], l[0][1], l[1][0], l[1][1], 9, o.pants);
+        Px.line(ctx, l[1][0], l[1][1], l[2][0], l[2][1] - 3, 11, o.pants);
+        Px.line(ctx, l[0][0] - 2, l[0][1], l[1][0] - 2, l[1][1], 1, o.pantsHi);
+        Px.line(ctx, l[1][0] + 2, l[1][1], l[2][0] + 2, l[2][1] - 3, 1, o.pantsLo);
+      } else {
+        limb(ctx, l, 7, o.pants, o.pantsHi);
+        shoe(ctx, o, l[2][0], l[2][1] + 3);
+      }
     }
   }
 
@@ -52,8 +59,10 @@ const Hero = (() => {
       // manica
       if (outfit === 'uniforme') Px.line(ctx, a[0][0], a[0][1], a[0][0] + (a[1][0] - a[0][0]) * 0.55, a[0][1] + (a[1][1] - a[0][1]) * 0.55, 7, o.top);
       else if (outfit === 'casual') Px.line(ctx, a[0][0], a[0][1], a[0][0] + (a[1][0] - a[0][0]) * 0.4, a[0][1] + (a[1][1] - a[0][1]) * 0.4, 7, o.top);
+      else if (outfit === 'elegante') Px.line(ctx, a[0][0], a[0][1], a[1][0], a[1][1], 7, o.top);  // manica lunga fino al gomito
       // mano
       Px.ell(ctx, a[2][0], a[2][1], 3, 3, H.skin);
+      if (outfit === 'elegante' && key === 'aR') { const bx = a[1][0] + (a[2][0] - a[1][0]) * 0.8, by = a[1][1] + (a[2][1] - a[1][1]) * 0.8; Px.line(ctx, bx - 2, by, bx + 2, by, 1, '#e4e8ec'); }  // bracciale
     }
   }
 
@@ -66,19 +75,17 @@ const Hero = (() => {
       ctx.fillStyle = o.pantsLo; ctx.fillRect(13, 51, 18, 3);
       ctx.fillStyle = '#c8cfd6'; ctx.fillRect(21, 51, 2, 3);            // fibbia
     } else if (outfit === 'elegante') {
-      Px.bev(ctx, 14, 33, 16, 11, o.top, o.topHi, o.topLo);
-      Px.ell(ctx, 22, 33, 6, 2, H.skin);
-      ctx.fillStyle = o.accent; ctx.fillRect(14, 44, 16, 2);            // cintura dorata
-      // gonna svasata
-      for (let y = 46; y < 63; y++) {
-        const half = 8 + Math.floor((y - 46) * 0.55);
-        ctx.fillStyle = (y % 5 === 0) ? o.topLo : o.top;
-        ctx.fillRect(22 - half, y, half * 2, 1);
-        ctx.fillStyle = o.topHi; ctx.fillRect(22 - half + 1, y, 1, 1);
-      }
-      ctx.fillStyle = o.accent; ctx.fillRect(14, 62, 17, 1);            // bordo
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(21, 36, 2, 2);            // gioiello
-      ctx.fillStyle = o.accent; ctx.fillRect(21, 36, 2, 1);
+      // tuta salvia con colletto, bottoni, tracolla rossa e borsetta
+      Px.bev(ctx, 13, 33, 18, 20, o.top, o.topHi, o.topLo);
+      for (let i = 0; i < 5; i++) { ctx.fillStyle = H.skin; ctx.fillRect(19 + i, 33 + i, 6 - i * 2, 1); }   // scollo a V
+      ctx.fillStyle = o.topHi; ctx.fillRect(17, 33, 4, 3); ctx.fillRect(24, 33, 4, 3);                       // colletto
+      ctx.fillStyle = o.topLo; ctx.fillRect(18, 36, 2, 1); ctx.fillRect(25, 36, 2, 1);
+      ctx.fillStyle = o.topLo; for (let y = 39; y < 52; y += 4) ctx.fillRect(22, y, 1, 2);                  // bottoni
+      ctx.fillStyle = o.topLo; ctx.fillRect(13, 46, 18, 2);                                                  // arricciatura in vita
+      ctx.fillRect(15, 39, 5, 1); ctx.fillRect(25, 39, 5, 1);                                                // tasche
+      Px.line(ctx, 16, 34, 29, 52, 2, o.accent);                                                             // tracolla rossa
+      Px.rect(ctx, 26, 49, 8, 7, '#10151f'); Px.rect(ctx, 27, 50, 6, 5, o.bag);                              // borsetta
+      ctx.fillStyle = '#d8dde2'; ctx.fillRect(29, 50, 2, 1);
     } else {
       Px.bev(ctx, 13, 33, 18, 20, o.top, o.topHi, o.topLo);
       // scollo a V
@@ -114,12 +121,14 @@ const Hero = (() => {
   }
 
   function head(ctx, withWreath) {
-    // capelli lunghi dietro le spalle
-    Px.ell(ctx, 22, 17, 13, 14, H.hair);
-    ctx.fillStyle = H.hair; ctx.fillRect(9, 18, 6, 27); ctx.fillRect(29, 18, 6, 27);
-    ctx.fillStyle = H.hairShade; ctx.fillRect(9, 36, 6, 9); ctx.fillRect(29, 36, 6, 9);
-    ctx.fillStyle = H.hair; ctx.fillRect(10, 45, 4, 2); ctx.fillRect(30, 45, 4, 2);
-    ctx.fillStyle = HAIR_HI; ctx.fillRect(11, 22, 1, 12); ctx.fillRect(32, 22, 1, 12);
+    // chignon / capelli raccolti dietro la testa, ciocche ondulate che incorniciano il viso
+    Px.ell(ctx, 22, 16, 13, 13, H.hair);
+    Px.ell(ctx, 22, 4, 7, 5, H.hair);                       // chignon alto
+    ctx.fillStyle = HAIR_HI; ctx.fillRect(19, 2, 4, 1);
+    ctx.fillStyle = H.hair; ctx.fillRect(10, 18, 5, 14); ctx.fillRect(30, 18, 5, 14);   // ciocche ai lati del viso
+    ctx.fillStyle = H.hairShade; ctx.fillRect(10, 28, 5, 4); ctx.fillRect(30, 28, 5, 4);
+    ctx.fillStyle = H.hair; ctx.fillRect(11, 32, 3, 2); ctx.fillRect(31, 32, 3, 2);
+    ctx.fillStyle = HAIR_HI; ctx.fillRect(12, 20, 1, 8); ctx.fillRect(32, 20, 1, 8);
     // viso
     Px.ell(ctx, 22, 20, 9, 10, H.skin);
     ctx.fillStyle = H.skinShade; ctx.fillRect(16, 28, 12, 1);
@@ -132,9 +141,14 @@ const Hero = (() => {
       ctx.fillRect(x, 10, 1, len + 1);
       if (x % 4 === 1) { ctx.fillStyle = H.hairShade; ctx.fillRect(x, 10 + len, 1, 1); }
     }
-    ctx.fillStyle = HAIR_HI; ctx.fillRect(15, 6, 7, 1); ctx.fillRect(19, 5, 5, 1);
+    ctx.fillStyle = HAIR_HI; ctx.fillRect(15, 7, 7, 1); ctx.fillRect(19, 6, 5, 1);
+    // frangia laterale: piu' lunga a sinistra, spostata di lato
+    for (let i = 0; i < 6; i++) { ctx.fillStyle = H.hair; ctx.fillRect(12 + i, 15 + i, 1, 2); }
+    ctx.fillStyle = H.hair; ctx.fillRect(12, 14, 6, 3);
+    // orecchini d'argento
+    ctx.fillStyle = '#e4e8ec'; ctx.fillRect(13, 27, 2, 2); ctx.fillRect(30, 27, 2, 2);
     // sopracciglia
-    ctx.fillStyle = '#8a6a3a'; ctx.fillRect(15, 18, 5, 1); ctx.fillRect(25, 18, 5, 1);
+    ctx.fillStyle = '#4a2f20'; ctx.fillRect(15, 18, 5, 1); ctx.fillRect(25, 18, 5, 1);
     // occhi castani
     for (const ex of [16, 26]) {
       ctx.fillStyle = '#ffffff'; ctx.fillRect(ex, 20, 5, 5);
@@ -166,12 +180,11 @@ const Hero = (() => {
     ctx.save();
     ctx.translate(0, 0);
     // gambe piegate
-    const legCol = outfit === 'elegante' ? H.skin : o.pants;
+    const legCol = o.pants;
     Px.line(ctx, 15, 42, 8, 47, 7, legCol); Px.line(ctx, 29, 42, 38, 47, 7, legCol);
     shoe(ctx, o, 6, 51); shoe(ctx, o, 40, 51);
     // busto inclinato in avanti
-    Px.bev(ctx, 12, 32, 20, 13, outfit === 'elegante' ? o.top : o.top, o.topHi, o.topLo);
-    if (outfit === 'elegante') { for (let y = 44; y < 49; y++) { ctx.fillStyle = o.top; ctx.fillRect(10 - (y - 44), y, 24 + (y - 44) * 2, 1); } }
+    Px.bev(ctx, 12, 32, 20, 13, o.top, o.topHi, o.topLo);
     if (outfit === 'uniforme') { ctx.fillStyle = '#ffffff'; ctx.fillRect(26, 36, 4, 4); ctx.fillStyle = o.accent; ctx.fillRect(27, 37, 2, 2); }
     // braccia in avanti
     Px.line(ctx, 14, 36, 8, 42, 5, H.skin); Px.ell(ctx, 7, 43, 3, 3, H.skin);

@@ -5,11 +5,24 @@ function IntroScene(app, params) {
   const outfit = (params && params.outfit) || 'uniforme';
   const TX = CFG.INTRO;
   const FEET = 292;
-  const T_EXT = 2.8, T_M1 = 3.0, T_NURSE = 5.2, T_N1 = 6.0, T_M2 = 8.6, T_RUN = 10.8, T_END = 12.2;
-  const BEATS = [0, T_M1, T_NURSE, T_N1, T_M2, T_RUN];
+  // Tempi calcolati dal copione: ogni battuta dura ~2s (+0.25s per riga oltre la seconda)
+  const SCRIPT = TX.script;
+  const T_EXT = 2.8, T_FIRST = 3.0;
+  let tc = T_FIRST, T_NURSE = Infinity, T_SCARE = Infinity;
+  const BEAT_T = SCRIPT.map((b, i) => {
+    const start = tc;
+    if (b.who === 'n' && T_NURSE === Infinity) { T_NURSE = start; tc += 0.9; b.__start = start + 0.9; }
+    else b.__start = start;
+    if (b.scare && T_SCARE === Infinity) T_SCARE = b.__start;
+    tc = b.__start + 2.0 + Math.max(0, b.lines.length - 2) * 0.25;
+    return b.__start;
+  });
+  const T_RUN = tc, T_END = T_RUN + 1.4;
+  const T_N1 = T_NURSE + 0.9;
+  const BEATS = [0].concat(SCRIPT.map((b) => (b.__start === T_N1 ? T_NURSE : b.__start)), [T_RUN]);
   const SKIP = { x: W - 52, y: 4, w: 48, h: 18 };
   const fx = Fx.create();
-  let t = 0, left = false, lastBeat = 0;
+  let t = 0, left = false, lastBeat = 0, doorDone = false;
 
   const rr = (ctx, x, y, w, h, c) => Px.rect(ctx, x, y, w, h, c);
   function circle(ctx, x, y, r, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
@@ -98,9 +111,8 @@ function IntroScene(app, params) {
     if (t < T_EXT) return { x: Px.lerp(-34, 62, Px.ease(Px.clamp(t / T_EXT, 0, 1))), pose: (Math.floor(t * 6) % 2) ? 'run1' : 'run0', dy: 0 };
     if (t < T_RUN) {
       let x = 62, dy = 0, pose = 'stand';
-      if (t > T_M1 && t < T_NURSE) dy = Math.abs(Math.sin((t - T_M1) * 4)) * 2;
-      if (t >= T_NURSE && t < T_M2) pose = 'stand';
-      if (t >= T_M2) { pose = 'jump'; dy = Math.abs(Math.sin((t - T_M2) * 12)) * 4; x += Math.sin(t * 40) * 1.2; }
+      if (t > T_FIRST && t < T_NURSE && Math.floor(t * 3) % 2) dy = 1;
+      if (t >= T_SCARE) { pose = 'jump'; dy = Math.abs(Math.sin((t - T_SCARE) * 12)) * 4; x += Math.sin(t * 40) * 1.2; }
       return { x, pose, dy };
     }
     const p = Px.clamp((t - T_RUN) / 1.0, 0, 1);
@@ -143,10 +155,11 @@ function IntroScene(app, params) {
     }
 
     // battute
-    if (t >= T_M1 && t < T_NURSE) bubble(ctx, TX.martina1, m.x + 12, FEET - 96 - m.dy, m.x);
-    else if (t >= T_N1 && t < T_M2) bubble(ctx, TX.nurse1, nx - 6, FEET - 112, nx - 32, '#fff3b0');
-    else if (t >= T_M2 && t < T_RUN) bubble(ctx, TX.martina2, m.x + 14, FEET - 100 - m.dy, m.x);
-    else if (t >= T_RUN && t < T_END - 0.5) Px.text(ctx, 'SCAPPA!', W / 2, 120, PAL.gold, 7, 'center', PAL.ink);
+    let cur = null; for (const b of SCRIPT) if (t >= b.__start) cur = b;
+    if (cur && t < T_RUN) {
+      if (cur.who === 'm') bubble(ctx, cur.lines, m.x + 12, FEET - 100 - m.dy, m.x);
+      else bubble(ctx, cur.lines, nx - 6, FEET - 112, nx - 32, '#fff3b0');
+    } else if (t >= T_RUN && t < T_END - 0.5) Px.text(ctx, 'SCAPPA!', W / 2, 120, PAL.gold, 7, 'center', PAL.ink);
 
     // dissolvenza fra esterno e atrio
     const a = Math.max(0, 1 - Math.abs(t - T_EXT) / 0.25);
@@ -160,8 +173,8 @@ function IntroScene(app, params) {
   function update(dt) {
     t += dt;
     fx.update(dt);
-    if (!left && t >= T_NURSE && lastBeat < 2) { lastBeat = 2; Sfx.door(); fx.burst(200, 240, ['#fff', '#d3dfe3'], 8, 30, 0.4, 20); }
-    for (let i = 1; i < BEATS.length; i++) if (t >= BEATS[i] && lastBeat < i && i !== 2) { lastBeat = i; if (i === 4) Sfx.hit(); else Sfx.lane(); }
+    if (!left && t >= T_NURSE && !doorDone) { doorDone = true; Sfx.door(); fx.burst(200, 240, ['#fff', '#d3dfe3'], 8, 30, 0.4, 20); }
+    for (let i = 1; i < BEATS.length; i++) if (t >= BEATS[i] && lastBeat < i && BEATS[i] !== T_NURSE) { lastBeat = i; if (BEATS[i] === T_SCARE) Sfx.hit(); else Sfx.lane(); }
     if (!left && t >= T_END) go();
   }
 

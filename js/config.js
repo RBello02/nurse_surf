@@ -26,8 +26,8 @@ const CFG = {
   DEPTH_MAX: 1.0,
   // Aspetto della protagonista (coerente in tutto il gioco)
   HERO: {
-    hair: '#c9a46a',       // castano chiaro tendente al biondo
-    hairShade: '#a8834d',
+    hair: '#5a3a26',       // castano scuro (come nella foto)
+    hairShade: '#3e281a',
     eyes: '#5a3416',       // castani
     skin: '#f2c9a5',
     skinShade: '#d9a982'
@@ -44,9 +44,16 @@ const CFG = {
   // Scena iniziale (testi dei fumetti)
   INTRO: {
     sign: 'OSPEDALE',
-    martina1: ['PIACERE,', 'SONO MARTINA!'],
-    nurse1: ['BENVENUTA, MARTINA!', 'ORA LA PUNTURINA!'],
-    martina2: ['COSA?! NO NO NO!', 'SCAPPOOO!']
+    // Copione: who = 'm' (Martina) o 'n' (infermiera); lines = righe del fumetto (max ~23 caratteri).
+    // La prima battuta dell'infermiera fa entrare in scena la nurse. 'scare' = Martina spaventata.
+    script: [
+      { who: 'm', lines: ['PIACERE, SONO MARTINA!', 'SONO UNA STUDENTESSA', 'DI INFERMIERISTICA.'] },
+      { who: 'm', lines: ['SONO VENUTA A FARE', 'IL TIROCINIO!'] },
+      { who: 'n', lines: ['BENVENUTA, MARTINA!', 'MA PRIMA...'] },
+      { who: 'n', lines: ['DEVO FARTI LA', 'PUNTURINA! VIENI QUI,', 'NON FA MALE!'] },
+      { who: 'n', lines: ['E\' IL REGOLAMENTO', 'DEL REPARTO! SU,', 'BRACCIO!'] },
+      { who: 'm', lines: ['COSA?! NO NO NO!', 'SCAPPOOO!'], scare: true }
+    ]
   },
   OUTFITS: ['casual', 'elegante', 'uniforme'],
   OUTFIT_LABELS: { casual: 'CASUAL', elegante: 'ELEGANTE', uniforme: 'UNIFORME' },
