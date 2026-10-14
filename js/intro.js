@@ -97,7 +97,7 @@ function IntroScene(app, params) {
 
   // ---------- personaggi ----------
   const T_END = () => T_RUN + 1.4;
-  const beatReady = () => idx >= 0 && idx < SCRIPT.length && t >= SCRIPT[idx].__start;
+  const beatReady = () => (idx === -1 && t >= T_FIRST) || idx >= 0 && idx < SCRIPT.length && t >= SCRIPT[idx].__start;
 
   function advance() {
     const next = idx + 1;
@@ -176,7 +176,6 @@ function IntroScene(app, params) {
     t += dt;
     fx.update(dt);
     if (!left && t >= T_NURSE && !doorDone) { doorDone = true; Sfx.door(); fx.burst(200, 240, ['#fff', '#d3dfe3'], 8, 30, 0.4, 20); }
-    if (idx === -1 && t >= T_FIRST) advance();   // la prima battuta compare da sola
     if (!left && t >= T_END()) go();
   }
 

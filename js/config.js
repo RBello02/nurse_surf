@@ -72,6 +72,7 @@ const CFG = {
     ]
   },
   OUTFITS: ['casual', 'elegante', 'uniforme'],
+  OUTFIT_TITLES: { casual: 'VESTITO DI LAUREA', elegante: 'ELEGANTE', uniforme: 'UNIFORME' },   // nome esteso sotto Martina
   OUTFIT_LABELS: { casual: 'LAUREA', elegante: 'ELEGANTE', uniforme: 'UNIFORME' },
   STORAGE_KEY: 'nursesurf.v1'
 };
