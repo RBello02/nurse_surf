@@ -32,8 +32,7 @@ Senza Node basta anche `python3 -m http.server 8080` dentro la cartella.
 | Scivolata | swipe giu | freccia giu, S |
 | Pausa | pulsante in alto a destra | - |
 
-Nel menu: tocca una divisa (o Martina) per sceglierla, poi INIZIA. Nella scena iniziale tocca per passare alla battuta
-successiva oppure SALTA. Ogni 6 CFU raccolti si recupera una vita.
+Nel menu: tocca una divisa (o Martina) per sceglierla, poi INIZIA. Nella scena iniziale le battute avanzano solo toccando lo schermo (oppure SALTA). Ogni 6 CFU raccolti si recupera una vita.
 
 ## Su Android
 
@@ -54,7 +53,7 @@ in `android/app/src/main/AndroidManifest.xml`.
 
 ## Personalizzare
 
-- `js/config.js`: nome (`NAME`), copione della scena iniziale (`INTRO.script`: chi parla e le righe di ogni fumetto, i tempi si calcolano da soli), velocita', obiettivo di CFU (`CFU_GOAL`, 150), CFU per medaglietta (`CFU_PER_MEDAL`), CFU a cui si passa all'universita' (`UNI_AT_CFU`, 60), frasi dell'inseguitrice per ambiente (`ZONES`), indovinello delle porte (`DOOR`: CFU a cui compare, domanda, risposta giusta, etichette), vite, colori dell'aspetto
+- `js/config.js`: nome (`NAME`), copione della scena iniziale (`INTRO.script`: chi parla e le righe di ogni fumetto; si va avanti toccando), velocita', obiettivo di CFU (`CFU_GOAL`, 150), CFU per medaglietta (`CFU_PER_MEDAL`), CFU a cui si passa all'universita' (`UNI_AT_CFU`, 60), frasi dell'inseguitrice per ambiente (`ZONES`), indovinello delle porte (`DOOR`: CFU a cui compare, domanda, risposta giusta, etichette), vite, colori dell'aspetto
   della protagonista (`HERO`) e testi del finale (`FINALE`: cartelli, striscione, sottotitolo).
 - `js/hero.js`: sprite della protagonista e dell'infermiera inseguitrice.
 - `js/props.js`: ostacoli (si saltano, ci si scivola sotto, oppure si cambia corsia).

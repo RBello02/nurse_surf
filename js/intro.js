@@ -1,28 +1,17 @@
 // Scena iniziale: Martina arriva all'ospedale, si presenta, e l'infermiera vuole farle la puntura.
-// Tocca lo schermo per passare alla battuta successiva, oppure SALTA per andare subito alla corsa.
+// Le battute scorrono solo toccando lo schermo, oppure SALTA per andare subito alla corsa.
 function IntroScene(app, params) {
   const W = CFG.W, H = CFG.H;
   const outfit = (params && params.outfit) || 'uniforme';
   const TX = CFG.INTRO;
   const FEET = 292;
-  // Tempi calcolati dal copione: ogni battuta dura ~2s (+0.25s per riga oltre la seconda)
+  // Le battute scorrono SOLO al tocco: ogni tocco passa alla successiva. I tempi sono presi al volo.
   const SCRIPT = TX.script;
   const T_EXT = 2.8, T_FIRST = 3.0;
-  let tc = T_FIRST, T_NURSE = Infinity, T_SCARE = Infinity;
-  const BEAT_T = SCRIPT.map((b, i) => {
-    const start = tc;
-    if (b.who === 'n' && T_NURSE === Infinity) { T_NURSE = start; tc += 0.9; b.__start = start + 0.9; }
-    else b.__start = start;
-    if (b.scare && T_SCARE === Infinity) T_SCARE = b.__start;
-    tc = b.__start + 2.0 + Math.max(0, b.lines.length - 2) * 0.25;
-    return b.__start;
-  });
-  const T_RUN = tc, T_END = T_RUN + 1.4;
-  const T_N1 = T_NURSE + 0.9;
-  const BEATS = [0].concat(SCRIPT.map((b) => (b.__start === T_N1 ? T_NURSE : b.__start)), [T_RUN]);
+  let T_NURSE = Infinity, T_N1 = Infinity, T_SCARE = Infinity, T_RUN = Infinity, idx = -1;
   const SKIP = { x: W - 52, y: 4, w: 48, h: 18 };
   const fx = Fx.create();
-  let t = 0, left = false, lastBeat = 0, doorDone = false;
+  let t = 0, left = false, doorDone = false;
 
   const rr = (ctx, x, y, w, h, c) => Px.rect(ctx, x, y, w, h, c);
   function circle(ctx, x, y, r, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
@@ -107,6 +96,19 @@ function IntroScene(app, params) {
   }
 
   // ---------- personaggi ----------
+  const T_END = () => T_RUN + 1.4;
+  const beatReady = () => idx >= 0 && idx < SCRIPT.length && t >= SCRIPT[idx].__start;
+
+  function advance() {
+    const next = idx + 1;
+    if (next >= SCRIPT.length) { if (T_RUN === Infinity) { T_RUN = t; Sfx.lane(); } idx = SCRIPT.length; return; }
+    const b = SCRIPT[next];
+    if (b.who === 'n' && T_NURSE === Infinity) { T_NURSE = t; T_N1 = t + 0.9; b.__start = T_N1; }
+    else b.__start = t;
+    if (b.scare && T_SCARE === Infinity) { T_SCARE = b.__start; Sfx.hit(); } else if (b.who !== 'n' || T_NURSE !== t) Sfx.lane();
+    idx = next;
+  }
+
   function marinaPose() {
     if (t < T_EXT) return { x: Px.lerp(-34, 62, Px.ease(Px.clamp(t / T_EXT, 0, 1))), pose: (Math.floor(t * 6) % 2) ? 'run1' : 'run0', dy: 0 };
     if (t < T_RUN) {
@@ -155,11 +157,11 @@ function IntroScene(app, params) {
     }
 
     // battute
-    let cur = null; for (const b of SCRIPT) if (t >= b.__start) cur = b;
+    const cur = beatReady() ? SCRIPT[idx] : null;
     if (cur && t < T_RUN) {
       if (cur.who === 'm') bubble(ctx, cur.lines, m.x + 12, FEET - 100 - m.dy, m.x);
       else bubble(ctx, cur.lines, nx - 6, FEET - 112, nx - 32, '#fff3b0');
-    } else if (t >= T_RUN && t < T_END - 0.5) Px.text(ctx, 'SCAPPA!', W / 2, 120, PAL.gold, 7, 'center', PAL.ink);
+    } else if (t >= T_RUN && t < T_END() - 0.5) Px.text(ctx, 'SCAPPA!', W / 2, 120, PAL.gold, 7, 'center', PAL.ink);
 
     // dissolvenza fra esterno e atrio
     const a = Math.max(0, 1 - Math.abs(t - T_EXT) / 0.25);
@@ -167,15 +169,15 @@ function IntroScene(app, params) {
 
     // comandi
     if (t > 0.4) Px.button(ctx, SKIP.x, SKIP.y, SKIP.w, SKIP.h, 'SALTA', { f: 2, color: '#3e7bd6', dark: '#27559c', light: '#6ea0ec' });
-    if (t > 1 && t < T_RUN && Math.floor(t * 2) % 2 === 0) Px.text(ctx, 'TOCCA PER CONTINUARE', W / 2, 308, '#ffffff', 1, 'center', PAL.ink);
+    if ((beatReady() || t < T_FIRST) && t > 1 && Math.floor(t * 2) % 2 === 0) Px.text(ctx, 'TOCCA PER CONTINUARE', W / 2, 308, '#ffffff', 1, 'center', PAL.ink);
   }
 
   function update(dt) {
     t += dt;
     fx.update(dt);
     if (!left && t >= T_NURSE && !doorDone) { doorDone = true; Sfx.door(); fx.burst(200, 240, ['#fff', '#d3dfe3'], 8, 30, 0.4, 20); }
-    for (let i = 1; i < BEATS.length; i++) if (t >= BEATS[i] && lastBeat < i && BEATS[i] !== T_NURSE) { lastBeat = i; if (BEATS[i] === T_SCARE) Sfx.hit(); else Sfx.lane(); }
-    if (!left && t >= T_END) go();
+    if (idx === -1 && t >= T_FIRST) advance();   // la prima battuta compare da sola
+    if (!left && t >= T_END()) go();
   }
 
   function go() {
@@ -184,12 +186,16 @@ function IntroScene(app, params) {
     app.go('game', { outfit }, { color: '#ffffff', time: 0.35 });
   }
 
+  function tapNext() {
+    if (t < T_FIRST) { t = T_FIRST; return; }          // salta la camminata iniziale
+    if (beatReady()) advance();                        // se l'infermiera sta ancora entrando, il tocco non conta
+  }
+
   function input(action, p) {
     if (action === 'tap') {
       if (Px.hit(SKIP, p, 6)) { Sfx.select(); go(); return; }
-      const next = BEATS.find((b) => b > t + 0.05);
-      if (next === undefined) go(); else { t = next; }
-    } else if (action === 'confirm') go();
+      tapNext();
+    } else if (action === 'confirm') tapNext();
   }
 
   return { enter() { Sfx.stopMusic(); }, leave() {}, update, render, input };

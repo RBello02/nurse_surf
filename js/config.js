@@ -72,7 +72,7 @@ const CFG = {
     ]
   },
   OUTFITS: ['casual', 'elegante', 'uniforme'],
-  OUTFIT_LABELS: { casual: 'CASUAL', elegante: 'ELEGANTE', uniforme: 'UNIFORME' },
+  OUTFIT_LABELS: { casual: 'LAUREA', elegante: 'ELEGANTE', uniforme: 'UNIFORME' },
   STORAGE_KEY: 'nursesurf.v1'
 };
 
