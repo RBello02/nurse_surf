@@ -10,7 +10,7 @@ function GameScene(app, outfit) {
     time: 0, speed: CFG.START_SPEED,
     lane: 1, laneF: 1, jumpT: 0, slideT: 0,
     objs: [], nextRowW: 2.6,
-    zone: 'hospital', zoneBannerT: 0, uniGate: false,
+    zone: 'hospital', zoneBannerT: 0, uniGate: false, doorIdx: 0,
     hits: 0, cfu: 0, medals: 0, healCount: 0, invul: 0, stumble: 0, sinceHit: 0,
     gapTarget: CFG.CHASER_START_GAP, gapV: CFG.CHASER_START_GAP, chaserLane: 1,
     phase: 'run',          // run | corridor | caught | over | finishing
@@ -59,7 +59,7 @@ function GameScene(app, outfit) {
     const d = Px.clamp(g.time / CFG.RAMP_TIME, 0, 1);
     while (g.nextRowW < st.T + 3.1) {
       if (g.cfu >= CFG.CFU_GOAL) { startCorridor(); break; }
-      if (!g.doorDone && g.uniGate && g.phase === 'run' && g.cfu >= CFG.DOOR.atCfu) { startDoor(); break; }
+      if (g.doorIdx < CFG.DOOR.puzzles.length && g.uniGate && g.phase === 'run' && g.cfu >= CFG.DOOR.puzzles[g.doorIdx].atCfu) { startDoor(); break; }
       if (!g.uniGate && g.cfu >= CFG.UNI_AT_CFU) startUni();
       spawnRow(g.nextRowW, d);
       const gapW = Px.lerp(1.25, 0.88, d) * g.speed;
@@ -93,9 +93,9 @@ function GameScene(app, outfit) {
   const NURSE_K = 0.8, NURSE_TIP = 63, TH_BACK = -0.2, TH_STAB = 0.6;
 
   function startDoor() {
-    const kinds = ['sleep', 'talk', 'eat'].sort(() => Math.random() - 0.5);
-    g.phase = 'door'; g.doorDone = true;
-    g.door = { state: 'arrive', t: 0, order: kinds, sel: 1, pick: -1, result: null, ev: {}, stabbed: false };
+    const pz = CFG.DOOR.puzzles[g.doorIdx++];
+    g.phase = 'door';
+    g.door = { state: 'arrive', t: 0, pz, doors: pz.doors.slice().sort(() => Math.random() - 0.5), sel: 1, pick: -1, result: null, ev: {}, stabbed: false, poison: !!pz.poison, smoke: [] };
     g.objs = g.objs.filter((o) => o.w - st.T < 0.05);
     g.lane = 1; g.jumpT = 0; g.slideT = 0;
   }
@@ -104,7 +104,7 @@ function GameScene(app, outfit) {
     const d = g.door;
     if (!d || d.state !== 'ask') return;
     d.pick = i; d.state = 'anim'; d.t = 0;
-    d.result = d.order[i] === CFG.DOOR.right ? 'right' : 'wrong';
+    d.result = d.doors[i].right ? 'right' : 'wrong';
     d.hx = Px.clamp(DOOR_X[i], 40, 140);
     d.dir = d.hx <= 90 ? 1 : -1;            // da che lato arriva l'infermiera (1 = da destra)
     Sfx.select();
@@ -136,8 +136,39 @@ function GameScene(app, outfit) {
       once('bump', 0.7, () => { Sfx.hit(); g.shake = 0.3; });
       once('warn', 1.5, () => Sfx.warn());
       once('stab', 2.95, () => { d.stabbed = true; g.flash = 0.35; g.shake = 0.5; Sfx.hit(); fx.burst(d.hx, HERO_DOOR_FEET - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
-      if (d.t >= 4.5) { g.hits = CFG.MAX_HITS; g.phase = 'caught'; g.phaseT = 1.5; g.door = null; g.gapTarget = -0.2; Sfx.stopMusic(); finish(); }
+      const END = d.poison ? 7.0 : 4.5;
+      if (d.t >= END) { g.hits = CFG.MAX_HITS; g.phase = 'caught'; g.phaseT = 1.5; g.door = null; g.gapTarget = -0.2; Sfx.stopMusic(); finish(); }
     }
+  }
+
+  // Martina avvelenata: sprite tinto di verde a 6 livelli (con cache) e fumo viola che sale
+  const greenCache = new Map();
+  function greenImg(img, lvl) {
+    if (!lvl) return img;
+    let arr = greenCache.get(img);
+    if (!arr) greenCache.set(img, (arr = []));
+    if (!arr[lvl]) arr[lvl] = Px.make(img.width, img.height, (c) => {
+      c.drawImage(img, 0, 0);
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = `rgba(70,220,70,${0.08 * lvl + 0.1})`;
+      c.fillRect(0, 0, img.width, img.height);
+    });
+    return arr[lvl];
+  }
+
+  function drawSmoke(ctx, d, hx, feet, k, sp) {
+    if (g.frameT % 0.05 < 0.017 || d.smoke.length < 3) {
+      const rate = Px.clamp((sp - 0.7) / 1.5, 0.2, 1);
+      if (Math.random() < rate) d.smoke.push({ x: hx + (Math.random() - 0.5) * 20 * k / 1.25, y: feet - 20 - Math.random() * 28, vx: (Math.random() - 0.5) * 8, vy: -(14 + Math.random() * 16), r: 3 + Math.random() * 3, age: 0, life: 1.4 + Math.random() * 0.8, c: ['#8e5bd1', '#b48ae6', '#5f3a96'][(Math.random() * 3) | 0] });
+    }
+    const dt = 1 / 60;
+    for (const q of d.smoke) { q.age += dt; q.x += (q.vx + Math.sin(q.age * 5 + q.y) * 6) * dt; q.y += q.vy * dt; q.r += dt * 5; }
+    d.smoke = d.smoke.filter((q) => q.age < q.life);
+    for (const q of d.smoke) {
+      ctx.globalAlpha = Px.clamp(0.95 * (1 - q.age / q.life), 0, 0.95);
+      Px.ell(ctx, q.x, q.y, q.r, q.r * 0.85, q.c);
+    }
+    ctx.globalAlpha = 1;
   }
 
   function drawDoorScene(ctx) {
@@ -149,7 +180,7 @@ function GameScene(app, outfit) {
       Px.rect(ctx, 0, 224, W, 5, '#4a2f1a');
       const wrong = d.result === 'wrong';
       for (let i = 0; i < 3; i++) {
-        const kind = d.order[i], dr = Doors.get(kind), x = DOOR_X[i];
+        const kind = d.doors[i].kind, dr = Doors.get(kind), x = DOOR_X[i];
         const dy = (1 - pop) * 26;
         ctx.globalAlpha = pop;
         let shake = 0, open = 0;
@@ -164,7 +195,7 @@ function GameScene(app, outfit) {
         const lw = 33 * (1 - open * 0.88);
         ctx.drawImage(dr.leaf, x - 16.5 + shake, 162 + dy, lw, 60);
         // cartello con la scelta
-        const lab = CFG.DOOR.labels[kind], tw = Px.textWidth(lab, 2) + 6;
+        const lab = d.doors[i].label, tw = Px.textWidth(lab, 2) + 6;
         Px.rect(ctx, x - tw / 2 + shake, 143 + dy, tw, 12, PAL.ink); Px.rect(ctx, x - tw / 2 + 1 + shake, 144 + dy, tw - 2, 10, '#fff3b0');
         Px.text(ctx, lab, x + shake, 146.5 + dy, PAL.ink, 2, 'center');
         if (wrong && d.pick === i && d.t > 0.7) {                  // porta bloccata: X rossa e lucchetto
@@ -174,15 +205,15 @@ function GameScene(app, outfit) {
         ctx.globalAlpha = 1;
       }
       // titolo
-      const q = CFG.DOOR.question, tw = Px.textWidth(q, 2) + 14;
-      let msg = q, col = '#ffffff';
-      if (d.state === 'anim' && d.result === 'right' && d.t > 0.6) { msg = 'GIUSTO! BRAVA!'; col = '#7ee08f'; }
-      if (d.state === 'anim' && d.result === 'wrong' && d.t > 0.7) { msg = 'PORTA CHIUSA!'; col = '#ff8a9a'; }
-      const mw = Math.max(tw, Px.textWidth(msg, 2) + 14);
+      let lines = d.pz.question, col = '#ffffff';
+      if (d.state === 'anim' && d.result === 'right' && d.t > 0.6) { lines = ['GIUSTO! BRAVA!']; col = '#7ee08f'; }
+      if (d.state === 'anim' && d.result === 'wrong' && d.t > 0.7) { lines = ['PORTA CHIUSA!']; col = '#ff8a9a'; }
+      const mw = Math.min(W - 6, Math.max(...lines.map((l) => Px.textWidth(l, 2))) + 14), mh = 6 + lines.length * 10;
+      const my = 102 - mh;
       ctx.globalAlpha = pop;
-      Px.rect(ctx, 90 - mw / 2, 78, mw, 24, PAL.ink); Px.rect(ctx, 90 - mw / 2 + 1, 79, mw - 2, 22, '#1f3a7a');
-      Px.rect(ctx, 90 - mw / 2 + 1, 79, mw - 2, 2, '#4a69b0');
-      Px.text(ctx, msg, 90, 86, col, 2, 'center', '#0e1a3d');
+      Px.rect(ctx, 90 - mw / 2, my, mw, mh, PAL.ink); Px.rect(ctx, 90 - mw / 2 + 1, my + 1, mw - 2, mh - 2, '#1f3a7a');
+      Px.rect(ctx, 90 - mw / 2 + 1, my + 1, mw - 2, 2, '#4a69b0');
+      lines.forEach((l, i) => Px.text(ctx, l, 90, my + 5 + i * 10, col, 2, 'center', '#0e1a3d'));
       ctx.globalAlpha = 1;
       if (d.state === 'ask' && Math.floor(g.frameT * 2) % 2 === 0) Px.text(ctx, 'TOCCA LA PORTA', 90, 108, '#ffffff', 1, 'center', PAL.ink);
     }
@@ -201,12 +232,16 @@ function GameScene(app, outfit) {
         feet = Px.lerp(HERO_DOOR_FEET, DOOR_BOTTOM + 2, p); k = Px.lerp(HERO_DOOR_K, 0.7, p); alpha = 1 - p * 0.7; pose = runPose;
       }
       if (d.result === 'right' && d.t > 0.9 && d.t < 1.2) pose = 'cheer';
-      if (d.stabbed) { pose = 'jump'; hx += Math.sin(d.t * 50) * 1.5; feet -= Math.abs(Math.sin((d.t - 2.95) * 9)) * 8; }
+      if (d.stabbed && (!d.poison || d.t - 2.95 < 0.9)) { pose = 'jump'; hx += Math.sin(d.t * 50) * 1.5; feet -= Math.abs(Math.sin((d.t - 2.95) * 9)) * 8; }
     }
     ctx.fillStyle = 'rgba(16,21,31,0.28)'; ctx.fillRect(hx - 12, feet - 1, 24, 2.5);
     ctx.globalAlpha = alpha;
-    Hero.draw(ctx, outfit, pose, hx, feet, k);
+    const sp0 = d.stabbed ? d.t - 2.95 : -1;
+    if (d.poison && sp0 > 0.9) { pose = 'stand'; hx += Math.sin(d.t * 9) * 1.2; feet -= Math.abs(Math.sin(d.t * 7)) * 1.2; }
+    const greenLvl = d.poison && sp0 > 0.5 ? Math.min(6, Math.floor((sp0 - 0.5) / 1.3 * 6) + 1) : 0;
+    Px.blit(ctx, greenImg(Hero.get(outfit, pose), greenLvl), hx, feet, k);
     ctx.globalAlpha = 1;
+    if (d.poison && sp0 > 0.7) drawSmoke(ctx, d, hx, feet, k, sp0);
     // infermiera che arriva con la siringa
     if (d.state === 'anim' && d.result === 'wrong' && d.t > 1.5) {
       const finalX = d.hx + d.dir * (NURSE_TIP + 4);
@@ -229,9 +264,11 @@ function GameScene(app, outfit) {
         const sp = d.t - 2.95;
         if (sp < 1.2) Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff');
         if (sp > 0.5 && sp < 1.4) Px.text(ctx, 'PUNTURA!', 90, 112, PAL.gold, 5, 'center', PAL.ink);
+        if (d.poison && sp > 1.6 && sp < 3.2) Px.text(ctx, Math.floor(sp * 3) % 2 ? 'COF COF!' : 'BLEAH...', hx, feet - 72, '#7ee08f', 3, 'center', PAL.ink);
       }
     }
-    if (d.state === 'anim' && d.result === 'wrong' && d.t > 3.9) { ctx.fillStyle = `rgba(16,21,31,${Math.min(1, (d.t - 3.9) / 0.6)})`; ctx.fillRect(0, 0, W, H); }
+    const T_FADE = d.poison ? 6.4 : 3.9;
+    if (d.state === 'anim' && d.result === 'wrong' && d.t > T_FADE) { ctx.fillStyle = `rgba(16,21,31,${Math.min(1, (d.t - T_FADE) / 0.6)})`; ctx.fillRect(0, 0, W, H); }
   }
 
   // ---------- azioni del giocatore ----------

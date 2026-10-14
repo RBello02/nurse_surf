@@ -27,13 +27,17 @@ const CFG = {
   CFU_GOAL: 150,
   CFU_PER_MEDAL: 3,
   UNI_AT_CFU: 60,
-  // Indovinello delle tre porte: a DOOR.atCfu la corsa si ferma. Risposta giusta = si entra e si prosegue,
+  // Indovinelli delle tre porte. A atCfu la corsa si ferma. Risposta giusta (right: true) = si entra e si prosegue,
   // sbagliata = la porta resta chiusa e l'infermiera fa la puntura (fine partita).
+  // kind: 'sleep' | 'talk' | 'eat' (porte con disegno) oppure 'A' | 'B' | 'C' (porte con lettera, per domande scritte).
+  // label: max 9 caratteri. question: una o due righe (max ~26 caratteri). poison: dopo la puntura Martina diventa verde e fuma viola.
   DOOR: {
-    atCfu: 105,
-    question: 'QUANDO SI DORME?',
-    right: 'sleep',
-    labels: { sleep: 'SI DORME', talk: 'SI PARLA', eat: 'SI MANGIA' }
+    puzzles: [
+      { atCfu: 105, question: ['QUANDO SI DORME?'], poison: false, doors: [
+        { kind: 'sleep', label: 'SI DORME', right: true }, { kind: 'talk', label: 'SI PARLA' }, { kind: 'eat', label: 'SI MANGIA' }] },
+      { atCfu: 125, question: ['UROLOGIA: EMATURIA INDOLORE', 'IN UN FUMATORE DI 60 ANNI.', 'PRIMO SOSPETTO?'], poison: true, doors: [
+        { kind: 'A', label: 'VESCICA', right: true }, { kind: 'B', label: 'PROSTATA' }, { kind: 'C', label: 'CALCOLI' }] }
+    ]
   },
   ZONES: {
     hospital: { bubbles: ['SOLO UNA PUNTURINA!', 'FERMA LI!', 'NON FA MALE!', 'VIENI QUI!'] },

@@ -6,7 +6,7 @@ const Doors = (() => {
   const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
   const E = Px.ell;
 
-  const SKIN = { sleep: ['#2f4a9a', '#4a69b0', '#1d3170'], talk: ['#f28c28', '#ffb258', '#b9640f'], eat: ['#d23a52', '#ec6a80', '#9a2238'] };
+  const SKIN = { A: ['#2a8f8a', '#4fc4b3', '#1c6460'], B: ['#8e5bd1', '#b48ae6', '#5f3a96'], C: ['#c9962a', '#f6c344', '#8c6414'], sleep: ['#2f4a9a', '#4a69b0', '#1d3170'], talk: ['#f28c28', '#ffb258', '#b9640f'], eat: ['#d23a52', '#ec6a80', '#9a2238'] };
 
   function iconSleep(c) {
     R(c, 6, 8, 52, 64, '#16236a');
@@ -36,6 +36,12 @@ const Doors = (() => {
   }
   function L(c) { Px.line(c, 52, 20, 52, 38, 2, '#9aa5af'); Px.line(c, 49, 14, 49, 20, 1, '#9aa5af'); Px.line(c, 55, 14, 55, 20, 1, '#9aa5af'); }
 
+  function iconLetter(c, kind) {
+    R(c, 6, 8, 52, 64, '#fff3d6');
+    R(c, 10, 12, 44, 56, '#ffffff'); R(c, 10, 12, 44, 2, '#e3e8ec');
+    Px.text(c, kind, 31, 24, PAL.ink, 8, 'center');
+  }
+
   function build(kind) {
     const [col, hi, lo] = SKIN[kind];
     const base = Px.outlined(Px.make(W, H, (c) => {
@@ -47,7 +53,7 @@ const Doors = (() => {
       Px.bev(c, 0, 0, LW, LH, col, hi, lo);
       R(c, 4, 4, 56, 68, '#10151f'); R(c, 5, 5, 54, 66, lo);
       c.save(); c.translate(-1, -1);
-      (kind === 'sleep' ? iconSleep : kind === 'talk' ? iconTalk : iconEat)(c);
+      (kind === 'sleep' ? iconSleep : kind === 'talk' ? iconTalk : kind === 'eat' ? iconEat : iconLetter)(c, kind);
       c.restore();
       Px.bev(c, 6, 80, 52, 30, col, lo, hi);               // pannello basso
       E(c, 54, 62, 3, 3, '#f6c344'); R(c, 52, 61, 2, 1, '#fff3b0');   // maniglia dorata
