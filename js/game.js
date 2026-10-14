@@ -1,7 +1,6 @@
 // Scena di gioco: endless runner a 3 corsie nel corridoio dell'ospedale.
 function GameScene(app, outfit) {
-  const W = CFG.W, H = CFG.H, PY = CFG.PLAYER_Y;
-  const JUMP_PEAK = 34;
+  const W = CFG.W, H = CFG.H, PY = CFG.PLAYER_Y, HK = CFG.HERO_K;
   const BUBBLES = ['SOLO UNA PUNTURINA!', 'FERMA LI!', 'NON FA MALE!', 'VIENI QUI!'];
   const fx = Fx.create();
 
@@ -11,72 +10,59 @@ function GameScene(app, outfit) {
   const g = {
     time: 0, speed: CFG.START_SPEED,
     lane: 1, laneF: 1, jumpT: 0, slideT: 0,
-    objs: [], nextRowW: 2.6, lastGap: 1.2,
-    hits: 0, hearts: 0, healCount: 0, invul: 0, stumble: 0, sinceHit: 0,
+    objs: [], nextRowW: 2.6,
+    hits: 0, cfu: 0, healCount: 0, invul: 0, stumble: 0, sinceHit: 0,
     gapTarget: CFG.CHASER_START_GAP, gapV: CFG.CHASER_START_GAP, chaserLane: 1,
     phase: 'run',          // run | corridor | caught | over | finishing
     phaseT: 0, shake: 0, flash: 0, paused: false,
     bubble: '', bubbleT: 0, frameT: 0, score: 0, finale: false, best: Save.get().best || 0, newBest: false
   };
 
-  const PAUSE_BTN = { x: W - 19, y: 3, w: 16, h: 16 };
-  const BTN_RETRY = { x: 30, y: 186, w: 120, h: 28 };
-  const BTN_MENU = { x: 30, y: 222, w: 120, h: 24 };
-  const BTN_RESUME = { x: 30, y: 150, w: 120, h: 28 };
-  const BTN_QUIT = { x: 30, y: 186, w: 120, h: 24 };
+  const PAUSE_BTN = { x: W - 20, y: 3, w: 17, h: 17 };
+  const BTN_RETRY = { x: 30, y: 184, w: 120, h: 30 };
+  const BTN_MENU = { x: 30, y: 222, w: 120, h: 26 };
+  const BTN_RESUME = { x: 30, y: 150, w: 120, h: 30 };
+  const BTN_QUIT = { x: 30, y: 188, w: 120, h: 26 };
 
-  const heartImg = Props.get('cuore').img;
-  const heartOff = Px.tint(heartImg, '#3a4350');
+  // icone HUD: croce medica (vite) e medaglietta
+  const crossOn = Px.outlined(Px.make(16, 16, (c) => { c.fillStyle = '#ffffff'; c.fillRect(0, 0, 16, 16); c.fillStyle = PAL.red; c.fillRect(6, 1, 4, 14); c.fillRect(1, 6, 14, 4); c.fillStyle = '#f06277'; c.fillRect(6, 1, 1, 14); c.fillRect(1, 6, 14, 1); }));
+  const crossOff = Px.tint(crossOn, '#3a4350');
+  const medalImg = Props.medal();
 
   // ---------- generazione ostacoli ----------
   const pick = (a) => a[(Math.random() * a.length) | 0];
   const KINDS = ['jump', 'slide', 'block'];
-
-  function add(lane, type, w) {
-    g.objs.push({ lane, w, p: Props.get(type), done: false });
-  }
-
-  function heartLine(w, lane) {
-    for (let i = 0; i < 3; i++) add(lane, 'cuore', w + i * 0.2);
-  }
+  const add = (lane, type, w) => g.objs.push({ lane, w, p: Props.get(type), done: false, seed: Math.random() * 6.28 });
+  const cfuLine = (w, lane) => { for (let i = 0; i < 3; i++) add(lane, 'cfu', w + i * 0.22); };
 
   function spawnRow(w, d) {
     const x = Math.random();
     const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
-    let used = [];
+    let used;
     if (x < 0.55 - d * 0.25) {
-      // una sola corsia occupata
-      const k = pick(KINDS);
-      add(lanes[0], pick(Props.TYPES[k]), w);
-      used = [lanes[0]];
+      add(lanes[0], pick(Props.TYPES[pick(KINDS)]), w); used = [lanes[0]];
     } else if (x < 0.88 - d * 0.1) {
-      // due corsie occupate, una libera
       for (let i = 0; i < 2; i++) add(lanes[i], pick(Props.TYPES[pick(KINDS)]), w);
       used = [lanes[0], lanes[1]];
     } else {
-      // tutte e tre: almeno una non e' un blocco (si supera con salto o scivolata)
+      // tutte e tre le corsie: almeno una non e' un blocco (si supera con salto o scivolata)
       const ks = [pick(KINDS), pick(KINDS), pick(KINDS)];
       if (ks.every((k) => k === 'block')) ks[(Math.random() * 3) | 0] = pick(['jump', 'slide']);
       for (let i = 0; i < 3; i++) add(lanes[i], pick(Props.TYPES[ks[i]]), w);
       used = [0, 1, 2];
     }
     const free = [0, 1, 2].filter((l) => !used.includes(l));
-    if (free.length && Math.random() < 0.45) add(pick(free), 'cuore', w);
+    if (free.length && Math.random() < 0.45) add(pick(free), 'cfu', w);
   }
 
-  function updateSpawn(dt) {
+  function updateSpawn() {
     const d = Px.clamp(g.time / CFG.FINALE_AFTER, 0, 1);
     while (g.nextRowW < st.T + 3.1) {
-      if (g.time >= CFG.FINALE_AFTER - 3) {
-        startCorridor();
-        break;
-      }
+      if (g.time >= CFG.FINALE_AFTER - 3) { startCorridor(); break; }
       spawnRow(g.nextRowW, d);
-      const gapTime = Px.lerp(1.2, 0.82, d);
-      const gapW = gapTime * g.speed;
-      if (Math.random() < 0.5) heartLine(g.nextRowW + gapW * 0.35, (Math.random() * 3) | 0);
+      const gapW = Px.lerp(1.25, 0.88, d) * g.speed;
+      if (Math.random() < 0.5) cfuLine(g.nextRowW + gapW * 0.35, (Math.random() * 3) | 0);
       g.nextRowW += gapW;
-      g.lastGap = gapW;
     }
   }
 
@@ -86,9 +72,8 @@ function GameScene(app, outfit) {
     g.phase = 'corridor';
     st.specialStart = g.nextRowW + 0.5;
     st.endWTarget = st.specialStart + 7.5;
-    // scia di cuori lungo il corridoio speciale
-    const lanesSeq = [1, 1, 0, 1, 2, 1, 1, 0, 1, 2, 1];
-    for (let i = 0; i < lanesSeq.length; i++) add(lanesSeq[i], 'cuore', st.specialStart + 0.9 + i * 0.5);
+    const seq = [1, 1, 0, 1, 2, 1, 1, 0, 1, 2, 1];
+    seq.forEach((l, i) => add(l, 'cfu', st.specialStart + 0.9 + i * 0.5));
     Sfx.warn();
   }
 
@@ -96,7 +81,7 @@ function GameScene(app, outfit) {
   function jumpHeight() {
     if (g.jumpT <= 0) return 0;
     const p = 1 - g.jumpT / CFG.JUMP_TIME;
-    return 4 * JUMP_PEAK * p * (1 - p);
+    return 4 * CFG.JUMP_PEAK * p * (1 - p);
   }
 
   function act(action) {
@@ -106,7 +91,7 @@ function GameScene(app, outfit) {
     else if (action === 'up') {
       if (g.jumpT <= 0) {
         g.slideT = 0; g.jumpT = CFG.JUMP_TIME; Sfx.jump();
-        fx.burst(World.laneXf(g.laneF, 1), PY, ['#ffffff', '#d3dfe3'], 5, 30, 0.3, 40);
+        fx.burst(World.laneXf(g.laneF, 1), PY, ['#ffffff', '#d3dfe3'], 6, 30, 0.3, 40);
       }
     } else if (action === 'down') {
       if (g.slideT <= 0) { g.jumpT = 0; g.slideT = CFG.SLIDE_TIME; Sfx.slide(); }
@@ -114,18 +99,15 @@ function GameScene(app, outfit) {
   }
 
   // ---------- collisioni ----------
-  function onHit(o) {
+  function onHit() {
     g.hits++;
-    g.invul = 1.4;
-    g.stumble = 0.8;
-    g.shake = 0.35;
-    g.sinceHit = 0;
+    g.invul = 1.4; g.stumble = 0.8; g.shake = 0.35; g.sinceHit = 0;
     g.gapTarget = CFG.CHASER_START_GAP - g.hits * CFG.CHASER_CLOSE_STEP;
     g.bubble = pick(BUBBLES); g.bubbleT = 1.6;
     Sfx.hit();
-    fx.burst(World.laneXf(g.laneF, 1), PY - 14, ['#ffd23f', '#ffffff', '#e0344b'], 16, 70, 0.5, 120);
+    fx.burst(World.laneXf(g.laneF, 1), PY - 26, ['#ffd23f', '#ffffff', '#e0344b'], 18, 80, 0.5, 120);
     if (g.hits >= CFG.MAX_HITS) {
-      g.phase = 'caught'; g.phaseT = 0; g.gapTarget = -0.15; g.jumpT = 0; g.slideT = 0;
+      g.phase = 'caught'; g.phaseT = 0; g.gapTarget = -0.2; g.jumpT = 0; g.slideT = 0;
       Sfx.stopMusic();
     }
   }
@@ -138,14 +120,13 @@ function GameScene(app, outfit) {
       const dl = Math.abs(g.laneF - o.lane);
       if (o.p.kind === 'pickup') {
         if (dl > 0.7) continue;
-        o.done = true;
-        g.hearts++; g.healCount++;
+        o.done = true; g.cfu++; g.healCount++;
         Sfx.coin();
-        fx.burst(World.laneXf(o.lane, 1), PY - 20, ['#ff8a9c', '#ffffff'], 8, 40, 0.4, 20);
-        if (g.healCount >= 6 && g.hits > 0) {
-          g.healCount = 0; g.hits--; g.gapTarget = CFG.CHASER_START_GAP - g.hits * CFG.CHASER_CLOSE_STEP;
-          g.bubble = ''; Sfx.start();
-        } else if (g.healCount >= 6) g.healCount = 0;
+        fx.burst(World.laneXf(o.lane, 1), PY - 40, ['#ffe27a', '#ffffff', '#c9962a'], 10, 45, 0.4, 20);
+        if (g.healCount >= 6) {
+          g.healCount = 0;
+          if (g.hits > 0) { g.hits--; g.gapTarget = CFG.CHASER_START_GAP - g.hits * CFG.CHASER_CLOSE_STEP; g.bubble = ''; Sfx.start(); }
+        }
         continue;
       }
       if (g.invul > 0 || g.phase !== 'run' || dl > 0.5) continue;
@@ -153,7 +134,7 @@ function GameScene(app, outfit) {
       if (o.p.kind === 'jump') hit = jumpHeight() < o.p.clear;
       else if (o.p.kind === 'slide') hit = g.slideT <= 0;
       else hit = true;
-      if (hit) { o.done = true; onHit(o); }
+      if (hit) { o.done = true; onHit(); }
     }
   }
 
@@ -167,7 +148,6 @@ function GameScene(app, outfit) {
     g.flash = Math.max(0, g.flash - dt);
 
     if (g.phase === 'over') { g.phaseT += dt; return; }
-
     if (g.phase === 'caught') {
       g.phaseT += dt;
       g.speed = Math.max(0, g.speed - dt * 3);
@@ -177,49 +157,42 @@ function GameScene(app, outfit) {
       return;
     }
 
-    g.time += dt;
-    g.sinceHit += dt;
+    g.time += dt; g.sinceHit += dt;
     g.invul = Math.max(0, g.invul - dt);
     g.stumble = Math.max(0, g.stumble - dt);
 
-    // velocita' e difficolta' progressiva
     let target = Math.min(CFG.MAX_SPEED, CFG.START_SPEED + CFG.SPEED_GAIN * g.time);
     if (g.phase === 'corridor' || g.phase === 'finishing') target = Math.min(target, 1.25);
     g.speed += (target - g.speed) * Math.min(1, dt * 2);
-    const mul = 1 - 0.45 * (g.stumble / 0.8);
-    st.T += g.speed * mul * dt;
+    st.T += g.speed * (1 - 0.45 * (g.stumble / 0.8)) * dt;
 
-    // movimento
     g.laneF += Math.sign(g.lane - g.laneF) * Math.min(Math.abs(g.lane - g.laneF), dt / CFG.LANE_SWITCH_TIME);
     if (g.jumpT > 0) g.jumpT = Math.max(0, g.jumpT - dt);
     if (g.slideT > 0) g.slideT = Math.max(0, g.slideT - dt);
 
-    // l'inseguitrice insegue la corsia e recupera terreno se non sbagli
     g.chaserLane += (g.laneF - g.chaserLane) * Math.min(1, dt * 4);
     if (g.hits > 0 && g.sinceHit > 10 && g.phase === 'run') {
-      g.hits--; g.sinceHit = 0;
-      g.gapTarget = CFG.CHASER_START_GAP - g.hits * CFG.CHASER_CLOSE_STEP;
+      g.hits--; g.sinceHit = 0; g.gapTarget = CFG.CHASER_START_GAP - g.hits * CFG.CHASER_CLOSE_STEP;
     }
     if (g.phase !== 'run') g.gapTarget = 1.1;
     g.gapV += (g.gapTarget - g.gapV) * Math.min(1, dt * 3);
 
-    if (g.phase === 'run' || g.phase === 'corridor') updateSpawn(dt);
+    if (g.phase === 'run' || g.phase === 'corridor') updateSpawn();
 
-    // corridoio speciale: porta in fondo
     if (st.endWTarget != null && st.endW == null && st.endWTarget - st.T <= 3.0) st.endW = st.endWTarget;
     if (st.endW != null) {
       st.doorOpen = Px.clamp((1.7 - (st.endW - st.T)) / 1.0, 0, 1);
       if (st.endW - st.T < 0.35 && g.phase !== 'finishing') {
         g.phase = 'finishing'; g.phaseT = 0; g.flash = 0.5;
         Sfx.door(); Sfx.stopMusic();
-        app.go('finale', { outfit, score: g.score + 500 }, { color: '#fff7d6', time: 0.45 });
+        app.go('finale', { outfit, score: g.score + 500, cfu: g.cfu }, { color: '#fff7d6', time: 0.45 });
       }
     }
     if (g.phase === 'corridor' && g.frameT % 0.05 < dt) fx.confetti(W, [PAL.red, PAL.gold, PAL.blue, PAL.green, '#fff', PAL.pink]);
 
     collide();
     g.objs = g.objs.filter((o) => o.w - st.T > -0.4);
-    g.score = Math.floor(st.T * 10) + g.hearts * 25;
+    g.score = Math.floor(st.T * 10) + g.cfu * 25;
   }
 
   function finish() {
@@ -234,94 +207,116 @@ function GameScene(app, outfit) {
     if (z > 3.0 || z < -0.3 || o.done) return;
     const s = World.proj(z);
     const img = o.p.img;
-    const w = Math.max(1, Math.round(img.width * s)), h = Math.max(1, Math.round(img.height * s));
+    let w = img.width * 0.5 * s;
+    const h = img.height * 0.5 * s;
     const x = World.laneXf(o.lane, s);
     let y = World.scrY(s);
-    if (o.p.kind === 'pickup') y -= (14 + Math.sin(g.time * 6 + o.w * 5) * 2) * s;
+    if (o.p.kind === 'pickup') {
+      y -= (26 + Math.sin(g.time * 6 + o.seed) * 3) * s;
+      w *= 0.3 + 0.7 * Math.abs(Math.cos(g.time * 4 + o.seed));      // la medaglia gira su se stessa
+    }
     ctx.globalAlpha = Px.clamp((3.0 - z) / 0.7, 0, 1);
-    ctx.drawImage(img, Math.round(x - w / 2), Math.round(y - h), w, h);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, x - w / 2, y - h, w, h);
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 1;
+  }
+
+  // icona "cosa devo fare" sopra l'ostacolo, visibile quando e' vicino
+  function drawHint(ctx, o) {
+    const k = o.p.kind;
+    if (k === 'pickup' || o.done) return;
+    const z = o.w - st.T;
+    if (z > 1.6 || z < 0.12) return;
+    const s = World.proj(z);
+    const img = Props.hint(k);
+    const hs = Math.max(s, 0.5);
+    const w = img.width * 0.5 * hs, h = img.height * 0.5 * hs;
+    const x = World.laneXf(o.lane, s);
+    const top = (o.p.topUnits || 40) + 8;
+    const bob = Math.sin(g.time * 9) * 2 * hs;
+    ctx.globalAlpha = Px.clamp((1.6 - z) / 0.3, 0, 1);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, x - w / 2, World.scrY(s) - top * s - h + bob, w, h);
+    ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
   }
 
   function drawHero(ctx) {
     const jh = jumpHeight();
-    const x = Math.round(World.laneXf(g.laneF, 1));
+    const x = World.laneXf(g.laneF, 1);
     let pose;
     if (g.phase === 'caught' || g.phase === 'over') pose = 'stand';
     else if (g.slideT > 0) pose = 'slide';
     else if (jh > 0.5) pose = 'jump';
     else pose = (Math.floor(g.frameT * 9) % 2) ? 'run1' : 'run0';
-    // ombra
     ctx.fillStyle = 'rgba(16,21,31,0.28)';
-    const sw = Math.max(6, 14 - jh * 0.2);
-    ctx.fillRect(Math.round(x - sw / 2), PY - 1, Math.round(sw), 2);
+    const sw = Math.max(10, 26 - jh * 0.3);
+    ctx.fillRect(x - sw / 2, PY - 1, sw, 2.5);
     if (g.invul > 0 && Math.floor(g.invul * 14) % 2 === 0) return;
-    const bob = (pose === 'run0' || pose === 'run1') && Math.floor(g.frameT * 9) % 2 ? 1 : 0;
-    Hero.draw(ctx, outfit, pose, x, Math.round(PY - jh + bob), 1);
+    const bob = (pose === 'run0' || pose === 'run1') && Math.floor(g.frameT * 9) % 2 ? 0.8 : 0;
+    Hero.draw(ctx, outfit, pose, x, PY - jh + bob + 1, HK);
   }
 
   function drawChaser(ctx) {
     if (g.gapV >= 1.0) return;
-    const sc = 2;
-    const spr = Chaser.get(Math.floor(g.frameT * 6) % 2);
+    const spr = Chaser.get(Math.floor(g.frameT * 6) % 2, 'back');
     const cx = World.laneXf(g.chaserLane, 1);
     const bottom = H + 20 + g.gapV * 70 + Math.sin(g.frameT * 12) * 1.5;
-    const w = spr.width * sc, h = spr.height * sc;
-    ctx.drawImage(spr, Math.round(cx - w / 2), Math.round(bottom - h), w, h);
+    Px.blit(ctx, spr, cx, bottom, 1);
     if (g.bubbleT > 0 && g.bubble) {
-      const tw = Px.textWidth(g.bubble) + 8;
-      const bx = Math.round(Px.clamp(cx, tw / 2 + 2, W - tw / 2 - 2) - tw / 2), by = H - 34;
-      Px.rect(ctx, bx, by, tw, 13, PAL.ink);
-      Px.rect(ctx, bx + 1, by + 1, tw - 2, 11, '#fff3b0');
-      Px.text(ctx, g.bubble, bx + tw / 2, by + 4, PAL.ink, 1, 'center');
+      const tw = Px.textWidth(g.bubble, 2) + 10;
+      const bx = Px.clamp(cx, tw / 2 + 2, W - tw / 2 - 2) - tw / 2, by = H - 36;
+      Px.rect(ctx, bx, by, tw, 16, PAL.ink);
+      Px.rect(ctx, bx + 1, by + 1, tw - 2, 14, '#fff3b0');
+      Px.text(ctx, g.bubble, bx + tw / 2, by + 4.5, PAL.ink, 2, 'center');
     }
   }
 
   function arrow(ctx, x, y, dir, color) {
     ctx.fillStyle = color;
-    const rows = [1, 3, 5];
-    for (let i = 0; i < 3; i++) {
-      const w = rows[i];
-      if (dir === 'up') ctx.fillRect(x - (w >> 1), y + i, w, 1);
-      else if (dir === 'down') ctx.fillRect(x - (w >> 1), y + 2 - i, w, 1);
-      else if (dir === 'left') ctx.fillRect(x + i - 2, y - (w >> 1), 1, w);
-      else ctx.fillRect(x + 2 - i, y - (w >> 1), 1, w);
+    for (let i = 0; i < 4; i++) {
+      const w = 1 + i * 2;
+      if (dir === 'up') ctx.fillRect(x - w / 2, y + i, w, 1);
+      else if (dir === 'down') ctx.fillRect(x - w / 2, y + 3 - i, w, 1);
+      else if (dir === 'left') ctx.fillRect(x + i - 1, y - w / 2, 1, w);
+      else ctx.fillRect(x + 3 - i - 1, y - w / 2, 1, w);
     }
   }
 
   function drawHud(ctx) {
-    // vite
-    for (let i = 0; i < CFG.MAX_HITS; i++) ctx.drawImage(i < CFG.MAX_HITS - g.hits ? heartImg : heartOff, 3 + i * 14, 3);
-    // punteggio
-    Px.text(ctx, String(g.score), W / 2, 7, '#ffffff', 1, 'center', PAL.ink);
-    // pausa
+    for (let i = 0; i < CFG.MAX_HITS; i++) ctx.drawImage(i < CFG.MAX_HITS - g.hits ? crossOn : crossOff, 4 + i * 11, 4, crossOn.width * 0.5, crossOn.height * 0.5);
+    Px.text(ctx, String(g.score), W / 2, 6, '#ffffff', 3, 'center', PAL.ink);
     Px.button(ctx, PAUSE_BTN.x, PAUSE_BTN.y, PAUSE_BTN.w, PAUSE_BTN.h, '', { color: '#3e7bd6', dark: '#27559c', light: '#6ea0ec' });
-    Px.rect(ctx, PAUSE_BTN.x + 5, PAUSE_BTN.y + 4, 2, 8, '#fff');
-    Px.rect(ctx, PAUSE_BTN.x + 9, PAUSE_BTN.y + 4, 2, 8, '#fff');
+    Px.rect(ctx, PAUSE_BTN.x + 5, PAUSE_BTN.y + 4.5, 2.5, 8, '#fff');
+    Px.rect(ctx, PAUSE_BTN.x + 10, PAUSE_BTN.y + 4.5, 2.5, 8, '#fff');
     // progresso verso il finale
     const prog = Px.clamp(g.time / CFG.FINALE_AFTER, 0, 1);
-    Px.rect(ctx, 5, 22, W - 10, 5, PAL.ink);
-    Px.rect(ctx, 6, 23, W - 12, 3, '#3a4350');
-    Px.rect(ctx, 6, 23, Math.round((W - 12) * prog), 3, PAL.gold);
-    Px.rect(ctx, W - 10, 20, 5, 9, PAL.ink);
-    Px.rect(ctx, W - 9, 21, 3, 7, '#3fb858');
+    Px.rect(ctx, 5, 25, W - 10, 6, PAL.ink);
+    Px.rect(ctx, 6, 26, W - 12, 4, '#3a4350');
+    Px.rect(ctx, 6, 26, (W - 12) * prog, 4, PAL.gold);
+    Px.rect(ctx, W - 11, 23, 6, 10, PAL.ink);
+    Px.rect(ctx, W - 10, 24, 4, 8, '#3fb858');
+    // CFU raccolti
+    ctx.drawImage(medalImg, 4, 36, medalImg.width * 0.25, medalImg.height * 0.25);
+    Px.text(ctx, 'x' + g.cfu, 22, 40, '#ffe27a', 3, 'left', PAL.ink);
     // tutorial
     if (g.time < 5 && g.phase === 'run') {
       ctx.globalAlpha = Px.clamp((5 - g.time) / 0.8, 0, 1);
-      Px.rect(ctx, 28, 118, 124, 50, 'rgba(16,21,31,0.6)');
-      arrow(ctx, 40, 130, 'left', '#fff'); arrow(ctx, 140, 130, 'right', '#fff');
-      Px.text(ctx, 'CORSIA', W / 2, 127, '#fff', 1, 'center');
-      arrow(ctx, 40, 143, 'up', PAL.gold); Px.text(ctx, 'SALTA', W / 2, 142, PAL.gold, 1, 'center');
-      arrow(ctx, 40, 156, 'down', '#7fd3ff'); Px.text(ctx, 'SCIVOLA', W / 2, 155, '#7fd3ff', 1, 'center');
+      Px.rect(ctx, 22, 118, 136, 58, 'rgba(16,21,31,0.62)');
+      arrow(ctx, 36, 128, 'left', '#fff'); arrow(ctx, 144, 128, 'right', '#fff');
+      Px.text(ctx, 'CORSIA', W / 2, 125, '#fff', 2, 'center');
+      arrow(ctx, 36, 142, 'up', PAL.gold); Px.text(ctx, 'SALTA', W / 2, 140, PAL.gold, 2, 'center');
+      arrow(ctx, 36, 157, 'down', '#7fd3ff'); Px.text(ctx, 'SCIVOLA', W / 2, 155, '#7fd3ff', 2, 'center');
       ctx.globalAlpha = 1;
     }
   }
 
-  function dim(ctx, a) { ctx.fillStyle = `rgba(16,21,31,${a})`; ctx.fillRect(0, 0, W, H); }
+  const dim = (ctx, a) => { ctx.fillStyle = `rgba(16,21,31,${a})`; ctx.fillRect(0, 0, W, H); };
 
   function render(ctx) {
     ctx.save();
-    if (g.shake > 0) ctx.translate(Math.round((Math.random() - 0.5) * 6 * (g.shake / 0.35)), Math.round((Math.random() - 0.5) * 4 * (g.shake / 0.35)));
+    if (g.shake > 0) ctx.translate((Math.random() - 0.5) * 3 * (g.shake / 0.35), (Math.random() - 0.5) * 2 * (g.shake / 0.35));
     World.render(ctx, st);
     World.drawGate(ctx, st);
     const objs = g.objs.slice().sort((a, b) => b.w - a.w);
@@ -331,6 +326,7 @@ function GameScene(app, outfit) {
       drawObj(ctx, o);
     }
     if (!heroDone) drawHero(ctx);
+    for (const o of objs) drawHint(ctx, o);
     drawChaser(ctx);
     fx.draw(ctx);
     ctx.restore();
@@ -340,20 +336,20 @@ function GameScene(app, outfit) {
 
     if (g.paused) {
       dim(ctx, 0.65);
-      Px.text(ctx, 'PAUSA', W / 2, 100, '#fff', 3, 'center', PAL.ink);
-      Px.button(ctx, BTN_RESUME.x, BTN_RESUME.y, BTN_RESUME.w, BTN_RESUME.h, 'RIPRENDI', { scale: 2 });
-      Px.button(ctx, BTN_QUIT.x, BTN_QUIT.y, BTN_QUIT.w, BTN_QUIT.h, 'MENU', { color: '#e0344b', dark: '#a82036', light: '#f06277' });
+      Px.text(ctx, 'PAUSA', W / 2, 90, '#fff', 6, 'center', PAL.ink);
+      Px.button(ctx, BTN_RESUME.x, BTN_RESUME.y, BTN_RESUME.w, BTN_RESUME.h, 'RIPRENDI', { f: 3 });
+      Px.button(ctx, BTN_QUIT.x, BTN_QUIT.y, BTN_QUIT.w, BTN_QUIT.h, 'MENU', { f: 3, color: '#e0344b', dark: '#a82036', light: '#f06277' });
     }
     if (g.phase === 'over') {
       dim(ctx, Math.min(0.7, g.phaseT * 2));
       if (g.phaseT > 0.25) {
-        Px.text(ctx, 'OPS!', W / 2, 78, PAL.gold, 4, 'center', PAL.ink);
-        Px.text(ctx, "L'INFERMIERA TI HA", W / 2, 118, '#fff', 1, 'center', PAL.ink);
-        Px.text(ctx, 'ACCHIAPPATA!', W / 2, 128, '#fff', 1, 'center', PAL.ink);
-        Px.text(ctx, 'PUNTI ' + g.score, W / 2, 148, '#fff', 1, 'center', PAL.ink);
-        Px.text(ctx, (g.newBest ? 'NUOVO RECORD ' : 'RECORD ') + g.best, W / 2, 160, g.newBest ? PAL.gold : '#b7c6cc', 1, 'center', PAL.ink);
-        Px.button(ctx, BTN_RETRY.x, BTN_RETRY.y, BTN_RETRY.w, BTN_RETRY.h, 'RIPROVA', { scale: 2 });
-        Px.button(ctx, BTN_MENU.x, BTN_MENU.y, BTN_MENU.w, BTN_MENU.h, 'MENU', { color: '#3e7bd6', dark: '#27559c', light: '#6ea0ec' });
+        Px.text(ctx, 'OPS!', W / 2, 62, PAL.gold, 9, 'center', PAL.ink);
+        Px.text(ctx, "L'INFERMIERA TI HA", W / 2, 116, '#fff', 2, 'center', PAL.ink);
+        Px.text(ctx, 'ACCHIAPPATA!', W / 2, 130, '#fff', 2, 'center', PAL.ink);
+        Px.text(ctx, 'PUNTI ' + g.score + '   CFU ' + g.cfu, W / 2, 150, '#fff', 2, 'center', PAL.ink);
+        Px.text(ctx, (g.newBest ? 'NUOVO RECORD ' : 'RECORD ') + g.best, W / 2, 164, g.newBest ? PAL.gold : '#b7c6cc', 2, 'center', PAL.ink);
+        Px.button(ctx, BTN_RETRY.x, BTN_RETRY.y, BTN_RETRY.w, BTN_RETRY.h, 'RIPROVA', { f: 3 });
+        Px.button(ctx, BTN_MENU.x, BTN_MENU.y, BTN_MENU.w, BTN_MENU.h, 'MENU', { f: 3, color: '#3e7bd6', dark: '#27559c', light: '#6ea0ec' });
       }
     }
   }

@@ -4,11 +4,13 @@ const World = (() => {
   const W = CFG.W, H = CFG.H;
   const CX = W / 2, HZ = CFG.HORIZON_Y, PY = CFG.PLAYER_Y;
   const WALL = 84;        // semi-larghezza del corridoio a scala 1
-  const CEIL = 104;       // quanto sale il soffitto sopra l'orizzonte
+  const CEIL = 70;        // quanto sale il soffitto sopra l'orizzonte
   const S_MIN = 0.1;      // scala minima (fondo del corridoio)
   const SEG = 0.75;       // lunghezza dei segmenti di parete (porte, finestre, poster)
   const TILE = 0.3;       // lunghezza delle piastrelle del pavimento
   const LIGHT_P = 1.5;    // distanza fra le luci a soffitto
+  const STEP = 0.5;       // risoluzione del rendering (mezza unita' di progetto = 1 pixel reale)
+  const rq = (v) => Math.round(v / STEP) * STEP;
 
   const THEMES = {
     normal: {
@@ -47,11 +49,11 @@ const World = (() => {
   function vr(ctx, x, Y, v0, v1, color) {
     const y1 = Y(v1), y0 = Y(v0);
     ctx.fillStyle = color;
-    ctx.fillRect(x, y1, 1, Math.max(1, y0 - y1));
+    ctx.fillRect(x, y1, STEP, Math.max(STEP, y0 - y1));
   }
 
   function wallColumn(ctx, st, x) {
-    const xc = x + 0.5;
+    const xc = x + STEP / 2;
     const left = xc < CX;
     const s = Math.abs(xc - CX) / WALL;
     const sEnd = st._sEnd;
@@ -59,7 +61,7 @@ const World = (() => {
     const w = zOf(s) + st.T;
     const th = theme(st, w);
     const yF = scrY(s), yC = HZ - CEIL * s, h = yF - yC;
-    const Y = (v) => Math.round(yF - h * v);
+    const Y = (v) => rq(yF - h * v);
 
     vr(ctx, x, Y, 0, 1, th.wallTop);
     vr(ctx, x, Y, 0.04, 0.42, th.wallBot);
@@ -108,21 +110,22 @@ const World = (() => {
 
   function drawEndFace(ctx, st) {
     const s = st._sEnd;
-    const x0 = Math.round(CX - WALL * s), x1 = Math.round(CX + WALL * s);
-    const yT = Math.round(HZ - CEIL * s), yB = Math.round(scrY(s));
+    const x0 = rq(CX - WALL * s), x1 = rq(CX + WALL * s);
+    const yT = rq(HZ - CEIL * s), yB = rq(scrY(s));
     const th = st.endW != null ? THEMES.special : THEMES.normal;
     ctx.fillStyle = th.wallTop;
     ctx.fillRect(x0, yT, x1 - x0, yB - yT);
     if (st.endW == null) {
       // fondo del corridoio: portone con luce
       ctx.fillStyle = '#c9dde4';
-      ctx.fillRect(Math.round(CX - 20 * s), Math.round(yB - 150 * s), Math.round(40 * s), Math.round(150 * s));
+      ctx.fillRect(rq(CX - 20 * s), rq(yB - 150 * s), rq(40 * s), rq(150 * s));
       ctx.fillStyle = '#f4fbff';
-      ctx.fillRect(Math.round(CX - 14 * s), Math.round(yB - 144 * s), Math.round(28 * s), Math.round(144 * s));
+      ctx.fillRect(rq(CX - 14 * s), rq(yB - 144 * s), rq(28 * s), rq(144 * s));
       return;
     }
     const o = Px.clamp(st.doorOpen || 0, 0, 1);
-    const R = (a, b, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(CX + a * s), Math.round(yB - b * s), Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s)), c); };
+    const F = 0.8;
+    const R = (a, b, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(rq(CX + a * s * F), rq(yB - b * s * F), Math.max(STEP, rq(w * s * F)), Math.max(STEP, rq(h * s * F))); };
     // cornice
     R(-82, 206, 164, 206, PAL.goldDark);
     R(-76, 200, 152, 200, '#fff7d6');
@@ -146,9 +149,9 @@ const World = (() => {
     R(-44, 236, 88, 28, PAL.goldDark);
     R(-42, 234, 84, 24, '#1d2d7a');
     const txt = CFG.FINALE.doorText;
-    const sc = Math.max(1, Math.floor(s * 2));
-    if (Px.textWidth(txt, sc) <= 80 * s) {
-      Px.text(ctx, txt, CX, Math.round(yB - 234 * s + (24 * s - 5 * sc) / 2), PAL.gold, sc, 'center');
+    const sc = Math.max(1, Math.floor(s * 2.4));
+    if (Px.textWidth(txt, sc) <= 80 * s * F) {
+      Px.text(ctx, txt, CX, yB - 234 * s * F + (24 * s * F - 7 * sc * 0.5) / 2, PAL.gold, sc, 'center');
     }
   }
 
@@ -163,45 +166,45 @@ const World = (() => {
 
     // soffitto
     const yCeilEnd = Math.floor(HZ - CEIL * sEnd);
-    for (let y = 0; y <= yCeilEnd; y++) {
-      const s = (HZ - y - 0.5) / CEIL;
+    for (let y = 0; y <= yCeilEnd; y += STEP) {
+      const s = (HZ - y - STEP / 2) / CEIL;
       if (s < sEnd || s <= 0) continue;
       const w = zOf(s) + T;
       const th = theme(st, w);
       const half = WALL * s;
-      const x0 = Math.max(0, Math.round(CX - half)), x1 = Math.min(W, Math.round(CX + half));
+      const x0 = Math.max(0, rq(CX - half)), x1 = Math.min(W, rq(CX + half));
       ctx.fillStyle = (Math.floor(w / TILE) & 1) ? th.ceilA : th.ceilB;
-      ctx.fillRect(x0, y, x1 - x0, 1);
+      ctx.fillRect(x0, y, x1 - x0, STEP);
       if ((w / LIGHT_P) % 1 < 0.35) {
         const lh = 26 * s;
         ctx.fillStyle = th.light;
-        ctx.fillRect(Math.round(CX - lh), y, Math.max(1, Math.round(2 * lh)), 1);
+        ctx.fillRect(rq(CX - lh), y, Math.max(STEP, rq(2 * lh)), STEP);
       }
     }
 
     // pareti
-    for (let x = 0; x < W; x++) wallColumn(ctx, st, x);
+    for (let x = 0; x < W; x += STEP) wallColumn(ctx, st, x);
 
     // pavimento
-    const yFloorEnd = Math.ceil(scrY(sEnd));
-    for (let y = yFloorEnd; y < H; y++) {
-      const s = (y + 0.5 - HZ) / (PY - HZ);
+    const yFloorEnd = rq(Math.ceil(scrY(sEnd)));
+    for (let y = yFloorEnd; y < H; y += STEP) {
+      const s = (y + STEP / 2 - HZ) / (PY - HZ);
       if (s < sEnd) continue;
       const w = zOf(s) + T;
       const th = theme(st, w);
       const half = WALL * s;
-      const x0 = Math.max(0, Math.round(CX - half)), x1 = Math.min(W, Math.round(CX + half));
+      const x0 = Math.max(0, rq(CX - half)), x1 = Math.min(W, rq(CX + half));
       const lit = (w / LIGHT_P) % 1 < 0.35;
       ctx.fillStyle = lit ? th.floorHi : ((Math.floor(w / TILE) & 1) ? th.floorA : th.floorB);
-      ctx.fillRect(x0, y, x1 - x0, 1);
-      const ew = Math.max(1, Math.round(5 * s));
+      ctx.fillRect(x0, y, x1 - x0, STEP);
+      const ew = Math.max(STEP, rq(5 * s));
       ctx.fillStyle = th.line;
-      ctx.fillRect(x0, y, ew, 1);
-      ctx.fillRect(x1 - ew, y, ew, 1);
+      ctx.fillRect(x0, y, ew, STEP);
+      ctx.fillRect(x1 - ew, y, ew, STEP);
       if ((w / 0.5) % 1 < 0.6) {
-        const dx = 28 * s, lw = Math.max(1, Math.round(1.2 * s));
-        ctx.fillRect(Math.round(CX - dx), y, lw, 1);
-        ctx.fillRect(Math.round(CX + dx), y, lw, 1);
+        const dx = 28 * s, lw = Math.max(STEP, rq(1.2 * s));
+        ctx.fillRect(rq(CX - dx), y, lw, STEP);
+        ctx.fillRect(rq(CX + dx), y, lw, STEP);
       }
     }
   }
@@ -215,7 +218,7 @@ const World = (() => {
     if (s < st._sEnd) return;
     const yF = scrY(s);
     const xl = CX - WALL * s, xr = CX + WALL * s;
-    const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)), c); };
+    const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(rq(x), rq(y), Math.max(STEP, rq(w)), Math.max(STEP, rq(h))); };
     const pw = Math.max(2, 12 * s);
     R(xl, yF - 215 * s, pw, 215 * s, PAL.red);
     R(xr - pw, yF - 215 * s, pw, 215 * s, PAL.red);
@@ -224,9 +227,9 @@ const World = (() => {
     R(xl, yF - 215 * s, xr - xl, Math.max(1, 3 * s), PAL.gold);
     R(xl, yF - 194 * s, xr - xl, Math.max(1, 3 * s), PAL.gold);
     const txt = CFG.FINALE.gateText;
-    const sc = Math.max(1, Math.floor(s * 2));
+    const sc = Math.max(1, Math.floor(s * 2.4));
     if (Px.textWidth(txt, sc) <= (xr - xl) - 2 * pw) {
-      Px.text(ctx, txt, CX, yF - 213 * s + (20 * s - 5 * sc) / 2, '#ffffff', sc, 'center', PAL.redDark);
+      Px.text(ctx, txt, CX, yF - 213 * s + (20 * s - 7 * sc * 0.5) / 2, '#ffffff', sc, 'center', PAL.redDark);
     }
     // lucine festive
     for (let i = 0; i <= 14; i++) {

@@ -1,10 +1,11 @@
 // Configurazione globale di Nurse Surf. Risoluzione logica 180x320 (pixel art), scalata a schermo intero.
 const CFG = {
+  NAME: 'MARTINA',
   W: 180,
   H: 320,
   LANES: 3,
   // Prospettiva: la corsia si allarga dall'orizzonte verso il basso
-  HORIZON_Y: 92,
+  HORIZON_Y: 110,
   PLAYER_Y: 258,
   LANE_X_NEAR: [34, 90, 146],
   LANE_X_FAR: [74, 90, 106],
@@ -12,7 +13,9 @@ const CFG = {
   START_SPEED: 1.0,     // unita' di profondita' al secondo
   MAX_SPEED: 2.1,
   SPEED_GAIN: 0.018,    // incremento al secondo
-  JUMP_TIME: 0.62,
+  JUMP_TIME: 0.7,
+  JUMP_PEAK: 46,        // altezza massima del salto (unita')
+  HERO_K: 1.4,          // scala di Martina nel gioco
   SLIDE_TIME: 0.6,
   LANE_SWITCH_TIME: 0.13,
   CHASER_START_GAP: 0.55,  // 0..1, distanza dell'inseguitrice (1 = lontanissima)
@@ -35,8 +38,15 @@ const CFG = {
     doorText: 'AULA MAGNA',
     hallBanner: 'LAUREA',
     chaserLine: 'BRAVA!',
-    subtitle: 'BRAVISSIMA!',   // lascia '' per non mostrarlo
+    subtitle: 'BRAVISSIMA MARTINA!',   // lascia '' per non mostrarlo
     title: 'CONGRATULAZIONI!'
+  },
+  // Scena iniziale (testi dei fumetti)
+  INTRO: {
+    sign: 'OSPEDALE',
+    martina1: ['PIACERE,', 'SONO MARTINA!'],
+    nurse1: ['BENVENUTA, MARTINA!', 'ORA LA PUNTURINA!'],
+    martina2: ['COSA?! NO NO NO!', 'SCAPPOOO!']
   },
   OUTFITS: ['casual', 'elegante', 'uniforme'],
   OUTFIT_LABELS: { casual: 'CASUAL', elegante: 'ELEGANTE', uniforme: 'UNIFORME' },

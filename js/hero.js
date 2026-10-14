@@ -1,256 +1,329 @@
-// Protagonista e inseguitrice in pixel art, disegnate via codice.
-// L'aspetto della protagonista (frangia, occhi castani, capelli castano chiaro tendenti al biondo)
-// e' definito una sola volta qui e in CFG.HERO, cosi' resta identico in menu, gameplay e finale.
+// Martina (protagonista) e l'infermiera inseguitrice, in pixel art ad alta definizione.
+// Gli sprite sono disegnati in pixel reali (1 pixel = mezza unita' di progetto) con ellissi e segmenti,
+// poi circondati da un contorno scuro. L'aspetto di Martina (frangia, occhi castani, capelli castano chiaro
+// tendenti al biondo) e' definito qui e in CFG.HERO, quindi resta identico in menu, intro, gioco e finale.
 const Hero = (() => {
   const H = CFG.HERO;
   const cache = {};
-
+  const HAIR_HI = '#e8d3a0';
   const OUT = {
-    casual:   { top: '#f08fb0', topDark: '#c96a8e', pants: '#3e7bd6', pantsDark: '#27559c', shoe: '#ffffff', shoeDark: '#8c97a1', legSkin: false },
-    elegante: { top: '#8a1f3d', topDark: '#5f1329', pants: '#8a1f3d', pantsDark: '#5f1329', shoe: '#1d1d24', shoeDark: '#000000', legSkin: true },
-    uniforme: { top: '#2fb5a3', topDark: '#238f80', pants: '#2fb5a3', pantsDark: '#238f80', shoe: '#ffffff', shoeDark: '#8c97a1', legSkin: false }
+    casual:   { top: '#f08fb0', topHi: '#f8b3cb', topLo: '#c96a8e', pants: '#3e7bd6', pantsHi: '#6ea0ec', pantsLo: '#27559c', shoe: '#ffffff', sole: '#8c97a1', accent: '#e0344b' },
+    elegante: { top: '#8a1f3d', topHi: '#b23358', topLo: '#5f1329', pants: '#8a1f3d', pantsHi: '#b23358', pantsLo: '#5f1329', shoe: '#1d1d24', sole: '#000000', accent: '#f6c344' },
+    uniforme: { top: '#2fb5a3', topHi: '#58d3c1', topLo: '#238f80', pants: '#2a9f8f', pantsHi: '#4fc4b3', pantsLo: '#1f7a6d', shoe: '#ffffff', sole: '#8c97a1', accent: '#e0344b' }
   };
 
-  // Tabelle per posa: gambe [x, lunghezza], braccia [x, y, h, alzato]
+  // Giunti (spalla, gomito, mano / anca, ginocchio, piede) per ogni posa. Canvas 44x80.
   const POSES = {
-    run0:  { L: [5, 6], R: [8, 3], aL: [2, 12, 6, false], aR: [12, 11, 4, false] },
-    run1:  { L: [5, 3], R: [8, 6], aL: [2, 11, 4, false], aR: [12, 12, 6, false] },
-    jump:  { L: [4, 3], R: [9, 3], aL: [1, 7, 6, true],   aR: [13, 7, 6, true] },
-    stand: { L: [5, 6], R: [8, 6], aL: [2, 12, 6, false], aR: [12, 12, 6, false] },
-    cheer: { L: [5, 6], R: [8, 6], aL: [1, 6, 7, true],   aR: [13, 6, 7, true] }
+    stand: { aL: [[14, 36], [12, 46], [12, 55]], aR: [[30, 36], [32, 46], [32, 55]], lL: [[18, 52], [18, 65], [18, 76]], lR: [[26, 52], [26, 65], [26, 76]] },
+    run0:  { aL: [[14, 36], [8, 43], [11, 51]],  aR: [[30, 36], [35, 43], [31, 46]], lL: [[18, 52], [15, 63], [13, 75]], lR: [[26, 52], [29, 60], [32, 66]] },
+    run1:  { aL: [[14, 36], [9, 43], [13, 46]],  aR: [[30, 36], [36, 43], [33, 51]], lL: [[18, 52], [15, 60], [12, 66]], lR: [[26, 52], [29, 63], [31, 75]] },
+    jump:  { aL: [[14, 36], [8, 29], [5, 21]],   aR: [[30, 36], [36, 29], [39, 21]], lL: [[18, 52], [13, 60], [16, 69]], lR: [[26, 52], [31, 58], [28, 67]] },
+    cheer: { aL: [[14, 36], [8, 29], [5, 21]],   aR: [[30, 36], [36, 29], [39, 21]], lL: [[18, 52], [18, 65], [18, 76]], lR: [[26, 52], [26, 65], [26, 76]] }
   };
 
-  function head(ctx, ox, oy) {
-    const r = (x, y, w, h, c) => Px.rect(ctx, ox + x, oy + y, w, h, c);
-    // capelli (dietro e ai lati)
-    r(4, 2, 8, 1, H.hair);
-    r(3, 3, 10, 2, H.hair);
-    r(2, 4, 2, 9, H.hair);
-    r(12, 4, 2, 9, H.hair);
-    r(2, 11, 2, 2, H.hairShade);
-    r(12, 11, 2, 2, H.hairShade);
-    r(5, 3, 3, 1, '#e3cb97');
-    // viso
-    r(4, 5, 8, 6, H.skin);
-    r(4, 10, 8, 1, H.skinShade);
-    // frangia
-    r(4, 5, 8, 2, H.hair);
-    r(4, 7, 2, 1, H.hair);
-    r(10, 7, 2, 1, H.hair);
-    r(7, 7, 1, 1, H.hair);
-    r(8, 5, 2, 1, '#e3cb97');
-    // occhi castani
-    r(5, 8, 2, 2, H.eyes);
-    r(9, 8, 2, 2, H.eyes);
-    r(5, 8, 1, 1, '#ffffff');
-    r(9, 8, 1, 1, '#ffffff');
-    // guance e bocca
-    r(4, 9, 1, 1, '#f1a58e');
-    r(11, 9, 1, 1, '#f1a58e');
-    r(7, 10, 2, 1, '#c4605a');
-    // collo
-    r(7, 11, 2, 1, H.skinShade);
+  function limb(ctx, pts, th, col, hiCol) {
+    Px.line(ctx, pts[0][0], pts[0][1], pts[1][0], pts[1][1], th, col);
+    Px.line(ctx, pts[1][0], pts[1][1], pts[2][0], pts[2][1], th - 1, col);
+    if (hiCol) Px.line(ctx, pts[0][0] - 1, pts[0][1], pts[1][0] - 1, pts[1][1], 1, hiCol);
   }
 
-  function wreath(ctx, ox, oy) {
-    const r = (x, y, w, h, c) => Px.rect(ctx, ox + x, oy + y, w, h, c);
-    // foglie d'alloro a cerchio sulla sommita' della testa (i capelli restano visibili)
-    for (let x = 4; x <= 11; x++) {
-      r(x, 1, 1, 1, x % 2 ? '#2f9e44' : '#3fb858');
-      if (x % 2 === 0) r(x, 0, 1, 1, '#1f7a33');
+  function shoe(ctx, o, x, y) {
+    Px.ell(ctx, x, y - 1, 5, 3, o.shoe);
+    ctx.fillStyle = o.sole; ctx.fillRect(x - 5, y + 1, 11, 1);
+    if (o.shoe === '#ffffff') { ctx.fillStyle = o.accent; ctx.fillRect(x - 2, y - 2, 4, 1); }
+    if (o.shoe === '#1d1d24') { ctx.fillStyle = o.sole; ctx.fillRect(x - 5, y - 4, 2, 7); } // tacco
+  }
+
+  function legs(ctx, outfit, pose) {
+    const o = OUT[outfit], p = POSES[pose];
+    for (const key of ['lL', 'lR']) {
+      const l = p[key];
+      if (outfit === 'elegante') limb(ctx, l, 5, H.skin, '#f7d9bd');
+      else limb(ctx, l, 7, o.pants, o.pantsHi);
+      shoe(ctx, o, l[2][0], l[2][1] + 3);
     }
-    r(3, 2, 1, 1, '#1f7a33'); r(12, 2, 1, 1, '#1f7a33');
-    r(2, 3, 1, 2, '#2f9e44'); r(13, 3, 1, 2, '#3fb858');
-    r(2, 5, 1, 1, '#1f7a33'); r(13, 5, 1, 1, '#1f7a33');
-    r(7, 0, 2, 1, '#7ee08f');
-    // bacche e nastro rosso sul lato
-    r(6, 1, 1, 1, '#e0344b'); r(9, 1, 1, 1, '#e0344b');
-    r(13, 6, 2, 2, '#e0344b');
-    r(14, 8, 1, 4, '#e0344b');
-    r(14, 11, 1, 1, '#a82036');
   }
 
-  function leg(ctx, o, x, y, len) {
-    const col = o.legSkin ? H.skin : o.pants;
-    Px.rect(ctx, x, y, 3, len, col);
-    Px.rect(ctx, x, y + len, 4, 2, o.shoe);
-    Px.rect(ctx, x, y + len + 1, 4, 1, o.shoeDark);
+  function arms(ctx, outfit, pose) {
+    const o = OUT[outfit], p = POSES[pose];
+    for (const key of ['aL', 'aR']) {
+      const a = p[key];
+      limb(ctx, a, 5, H.skin, '#f7d9bd');
+      // manica
+      if (outfit === 'uniforme') Px.line(ctx, a[0][0], a[0][1], a[0][0] + (a[1][0] - a[0][0]) * 0.55, a[0][1] + (a[1][1] - a[0][1]) * 0.55, 7, o.top);
+      else if (outfit === 'casual') Px.line(ctx, a[0][0], a[0][1], a[0][0] + (a[1][0] - a[0][0]) * 0.4, a[0][1] + (a[1][1] - a[0][1]) * 0.4, 7, o.top);
+      // mano
+      Px.ell(ctx, a[2][0], a[2][1], 3, 3, H.skin);
+    }
   }
 
-  function arm(ctx, o, outfit, a) {
-    const [x, y, h, up] = a;
-    Px.rect(ctx, x, y, 2, h, H.skin);
-    if (outfit === 'elegante') return;
-    const sh = outfit === 'uniforme' ? 3 : 2;
-    const sy = up ? y + h - sh : y;
-    Px.rect(ctx, x, sy, 2, sh, o.top);
-  }
-
-  function torso(ctx, o, outfit) {
+  function torso(ctx, outfit) {
+    const o = OUT[outfit];
     if (outfit === 'casual') {
-      Px.rect(ctx, 4, 12, 8, 6, o.top);
-      Px.rect(ctx, 4, 17, 8, 1, o.topDark);
-      Px.rect(ctx, 4, 18, 8, 1, o.pants);
-      Px.rect(ctx, 7, 14, 2, 2, '#ffe3ee');
+      Px.bev(ctx, 13, 33, 18, 19, o.top, o.topHi, o.topLo);
+      Px.ell(ctx, 22, 33, 7, 2, H.skin);                 // scollo
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(19, 40, 6, 1); ctx.fillRect(21, 38, 2, 5); // piccola stella
+      ctx.fillStyle = o.pantsLo; ctx.fillRect(13, 51, 18, 3);
+      ctx.fillStyle = '#c8cfd6'; ctx.fillRect(21, 51, 2, 3);            // fibbia
     } else if (outfit === 'elegante') {
-      Px.rect(ctx, 4, 12, 8, 3, o.top);
-      Px.rect(ctx, 4, 15, 8, 1, PAL.gold);
-      Px.rect(ctx, 3, 16, 10, 6, o.top);
-      Px.rect(ctx, 3, 21, 10, 1, o.topDark);
-      Px.rect(ctx, 6, 11, 1, 1, PAL.gold);
-      Px.rect(ctx, 9, 11, 1, 1, PAL.gold);
-      Px.rect(ctx, 7, 12, 2, 1, PAL.gold);
+      Px.bev(ctx, 14, 33, 16, 11, o.top, o.topHi, o.topLo);
+      Px.ell(ctx, 22, 33, 6, 2, H.skin);
+      ctx.fillStyle = o.accent; ctx.fillRect(14, 44, 16, 2);            // cintura dorata
+      // gonna svasata
+      for (let y = 46; y < 63; y++) {
+        const half = 8 + Math.floor((y - 46) * 0.55);
+        ctx.fillStyle = (y % 5 === 0) ? o.topLo : o.top;
+        ctx.fillRect(22 - half, y, half * 2, 1);
+        ctx.fillStyle = o.topHi; ctx.fillRect(22 - half + 1, y, 1, 1);
+      }
+      ctx.fillStyle = o.accent; ctx.fillRect(14, 62, 17, 1);            // bordo
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(21, 36, 2, 2);            // gioiello
+      ctx.fillStyle = o.accent; ctx.fillRect(21, 36, 2, 1);
     } else {
-      Px.rect(ctx, 4, 12, 8, 6, o.top);
-      Px.rect(ctx, 7, 12, 2, 2, H.skin);
-      Px.rect(ctx, 4, 17, 8, 1, o.topDark);
-      Px.rect(ctx, 4, 18, 8, 1, o.pantsDark);
-      Px.rect(ctx, 8, 18, 1, 1, '#ffffff');
-      // fonendoscopio
-      Px.rect(ctx, 6, 12, 1, 4, PAL.greyDark);
-      Px.rect(ctx, 9, 12, 1, 4, PAL.greyDark);
-      Px.rect(ctx, 7, 16, 2, 1, PAL.metal);
+      Px.bev(ctx, 13, 33, 18, 20, o.top, o.topHi, o.topLo);
+      // scollo a V
+      for (let i = 0; i < 4; i++) { ctx.fillStyle = H.skin; ctx.fillRect(19 + i, 33 + i, 6 - i * 2, 1); }
+      ctx.fillStyle = o.topLo; ctx.fillRect(13, 52, 18, 3);            // vita pantaloni
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(21, 53, 2, 2);            // laccio
       // taschino con croce rossa
-      Px.rect(ctx, 10, 14, 3, 3, '#ffffff');
-      Px.rect(ctx, 11, 14, 1, 3, PAL.red);
-      Px.rect(ctx, 10, 15, 3, 1, PAL.red);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(25, 41, 6, 6);
+      ctx.fillStyle = o.accent; ctx.fillRect(27, 42, 2, 4); ctx.fillRect(26, 43, 4, 2);
+      // fonendoscopio
+      Px.line(ctx, 17, 33, 16, 41, 1, '#46515c');
+      Px.line(ctx, 27, 33, 25, 40, 1, '#46515c');
+      Px.line(ctx, 16, 41, 21, 48, 1, '#46515c');
+      Px.line(ctx, 25, 40, 22, 48, 1, '#46515c');
+      Px.ell(ctx, 21, 49, 2, 2, '#c4ccd3');
     }
+  }
+
+  function wreath(ctx) {
+    // corona d'alloro attorno alla testa, i capelli restano visibili
+    const greens = ['#2f9e44', '#3fb858', '#1f7a33'];
+    for (let i = 0; i < 22; i++) {
+      const a = Math.PI * (1.02 + (i / 21) * 0.96);
+      const x = 22 + Math.cos(a) * 12, y = 14 + Math.sin(a) * 10;
+      ctx.fillStyle = greens[i % 3];
+      ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 2);
+      if (i % 5 === 2) { ctx.fillStyle = '#e0344b'; ctx.fillRect(Math.round(x), Math.round(y), 1, 1); }
+    }
+    ctx.fillStyle = '#7ee08f'; ctx.fillRect(21, 3, 3, 1);
+    // nastro
+    ctx.fillStyle = '#e0344b'; ctx.fillRect(33, 14, 3, 3); ctx.fillRect(34, 17, 2, 9);
+    ctx.fillStyle = '#a82036'; ctx.fillRect(34, 24, 2, 2); ctx.fillRect(34, 17, 1, 8);
+  }
+
+  function head(ctx, withWreath) {
+    // capelli lunghi dietro le spalle
+    Px.ell(ctx, 22, 17, 13, 14, H.hair);
+    ctx.fillStyle = H.hair; ctx.fillRect(9, 18, 6, 27); ctx.fillRect(29, 18, 6, 27);
+    ctx.fillStyle = H.hairShade; ctx.fillRect(9, 36, 6, 9); ctx.fillRect(29, 36, 6, 9);
+    ctx.fillStyle = H.hair; ctx.fillRect(10, 45, 4, 2); ctx.fillRect(30, 45, 4, 2);
+    ctx.fillStyle = HAIR_HI; ctx.fillRect(11, 22, 1, 12); ctx.fillRect(32, 22, 1, 12);
+    // viso
+    Px.ell(ctx, 22, 20, 9, 10, H.skin);
+    ctx.fillStyle = H.skinShade; ctx.fillRect(16, 28, 12, 1);
+    Px.ell(ctx, 22, 31, 3, 3, H.skinShade);               // collo
+    // cappello di capelli e frangia
+    Px.ell(ctx, 22, 13, 11, 8, H.hair);
+    for (let x = 12; x <= 32; x++) {
+      const len = 5 + ((x * 7) % 4);
+      ctx.fillStyle = (x % 3 === 0) ? HAIR_HI : H.hair;
+      ctx.fillRect(x, 10, 1, len + 1);
+      if (x % 4 === 1) { ctx.fillStyle = H.hairShade; ctx.fillRect(x, 10 + len, 1, 1); }
+    }
+    ctx.fillStyle = HAIR_HI; ctx.fillRect(15, 6, 7, 1); ctx.fillRect(19, 5, 5, 1);
+    // sopracciglia
+    ctx.fillStyle = '#8a6a3a'; ctx.fillRect(15, 18, 5, 1); ctx.fillRect(25, 18, 5, 1);
+    // occhi castani
+    for (const ex of [16, 26]) {
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(ex, 20, 5, 5);
+      ctx.fillStyle = H.eyes;   ctx.fillRect(ex + 1, 20, 3, 5);
+      ctx.fillStyle = '#3a2210'; ctx.fillRect(ex + 1, 22, 3, 2);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(ex + 1, 20, 1, 1);
+      ctx.fillStyle = '#3a2210'; ctx.fillRect(ex, 19, 5, 1);   // ciglia
+    }
+    // naso, guance, bocca
+    ctx.fillStyle = H.skinShade; ctx.fillRect(22, 25, 1, 2);
+    Px.ell(ctx, 16, 27, 2, 1, '#f1a58e'); Px.ell(ctx, 29, 27, 2, 1, '#f1a58e');
+    ctx.fillStyle = '#c4605a'; ctx.fillRect(19, 29, 1, 1); ctx.fillRect(20, 30, 5, 1); ctx.fillRect(25, 29, 1, 1);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(21, 30, 3, 1);
+    if (withWreath) wreath(ctx);
   }
 
   function drawStanding(ctx, outfit, pose, withWreath) {
-    const o = OUT[outfit];
-    const p = POSES[pose];
-    leg(ctx, o, p.L[0], 19, p.L[1]);
-    leg(ctx, o, p.R[0], 19, p.R[1]);
-    arm(ctx, o, outfit, p.aL);
-    arm(ctx, o, outfit, p.aR);
-    torso(ctx, o, outfit);
-    head(ctx, 0, 0);
-    if (withWreath) wreath(ctx, 0, 0);
+    legs(ctx, outfit, pose);
+    torso(ctx, outfit);
+    arms(ctx, outfit, pose);
+    head(ctx, withWreath);
   }
 
+  // Scivolata: Martina si accovaccia e scivola sotto il cartello (canvas 60x52)
   function drawSlide(ctx, outfit, withWreath) {
     const o = OUT[outfit];
-    // testa piu' in basso: la protagonista si accovaccia
-    const legCol = o.legSkin ? H.skin : o.pants;
-    Px.rect(ctx, 3, 14, 10, 2, legCol);
-    Px.rect(ctx, 2, 16, 4, 2, o.shoe);
-    Px.rect(ctx, 10, 16, 4, 2, o.shoe);
-    Px.rect(ctx, 2, 17, 4, 1, o.shoeDark);
-    Px.rect(ctx, 10, 17, 4, 1, o.shoeDark);
-    Px.rect(ctx, 2, 10, 2, 4, H.skin);
-    Px.rect(ctx, 12, 10, 2, 4, H.skin);
-    Px.rect(ctx, 4, 9, 8, 5, outfit === 'elegante' ? o.top : o.top);
-    if (outfit === 'elegante') Px.rect(ctx, 3, 12, 10, 3, o.top);
-    if (outfit === 'uniforme') {
-      Px.rect(ctx, 5, 10, 1, 3, PAL.greyDark);
-      Px.rect(ctx, 10, 10, 1, 3, PAL.greyDark);
-    }
-    head(ctx, 0, -2);
-    if (withWreath) wreath(ctx, 0, -2);
+    ctx.save();
+    ctx.translate(8, -4);          // la testa scende
+    ctx.save();
+    ctx.translate(0, 0);
+    // gambe piegate
+    const legCol = outfit === 'elegante' ? H.skin : o.pants;
+    Px.line(ctx, 15, 42, 8, 47, 7, legCol); Px.line(ctx, 29, 42, 38, 47, 7, legCol);
+    shoe(ctx, o, 6, 51); shoe(ctx, o, 40, 51);
+    // busto inclinato in avanti
+    Px.bev(ctx, 12, 32, 20, 13, outfit === 'elegante' ? o.top : o.top, o.topHi, o.topLo);
+    if (outfit === 'elegante') { for (let y = 44; y < 49; y++) { ctx.fillStyle = o.top; ctx.fillRect(10 - (y - 44), y, 24 + (y - 44) * 2, 1); } }
+    if (outfit === 'uniforme') { ctx.fillStyle = '#ffffff'; ctx.fillRect(26, 36, 4, 4); ctx.fillStyle = o.accent; ctx.fillRect(27, 37, 2, 2); }
+    // braccia in avanti
+    Px.line(ctx, 14, 36, 8, 42, 5, H.skin); Px.ell(ctx, 7, 43, 3, 3, H.skin);
+    Px.line(ctx, 30, 36, 36, 42, 5, H.skin); Px.ell(ctx, 37, 43, 3, 3, H.skin);
+    ctx.restore();
+    head(ctx, withWreath);
+    ctx.restore();
   }
 
-  // pose: run0, run1, jump, slide, stand, cheer
+  // pose: stand, run0, run1, jump, cheer, slide
   function get(outfit, pose, withWreath = false) {
     const key = `${outfit}|${pose}|${withWreath ? 1 : 0}`;
     if (cache[key]) return cache[key];
-    const isSlide = pose === 'slide';
-    const c = Px.make(16, isSlide ? 19 : 28, (ctx) => {
-      if (isSlide) drawSlide(ctx, outfit, withWreath);
+    const slide = pose === 'slide';
+    const c = Px.make(slide ? 60 : 44, slide ? 52 : 80, (ctx) => {
+      if (slide) drawSlide(ctx, outfit, withWreath);
       else drawStanding(ctx, outfit, pose, withWreath);
     });
     cache[key] = Px.outlined(c);
     return cache[key];
   }
 
-  // Ritratto grande per il menu: sprite frontale ingrandito
-  function draw(ctx, outfit, pose, x, y, scale = 1, opts = {}) {
-    const spr = get(outfit, pose, !!opts.wreath);
-    const w = spr.width * scale;
-    const h = spr.height * scale;
-    ctx.drawImage(spr, Math.round(x - w / 2), Math.round(y - h), w, h);
+  // (x, yBottom) = centro-base in unita' di progetto; scale 1 = dimensione di gioco
+  function draw(ctx, outfit, pose, x, yBottom, scale = 1, opts = {}) {
+    Px.blit(ctx, get(outfit, pose, !!opts.wreath), x, yBottom, scale);
   }
 
   return { get, draw };
 })();
 
-// Infermiera inseguitrice con la gigantesca siringa "PFIZER": caricatura buffa, niente horror.
+// Infermiera inseguitrice (formosa, buffa): con la gigantesca siringa "PFIZER" sopra la testa.
+// view 'back' = vista da dietro durante la corsa; 'front' = vista frontale (scena iniziale e finale).
 const Chaser = (() => {
   const cache = {};
+  const WHITE = '#ffffff', SH = '#d3dce2', SH2 = '#aab6bf';
+  const HAIR = '#5a3a28', HAIR_HI = '#7a5238';
 
-  function syringe(ctx, x, y) {
-    const r = (a, b, w, h, c) => Px.rect(ctx, x + a, y + b, w, h, c);
-    // pollice e stantuffo
-    r(0, 2, 2, 5, PAL.metalDark);
-    r(2, 3, 6, 3, PAL.metal);
+  function syringe(c, x, y) {
+    // stantuffo e pollice
+    Px.bev(c, x, y + 4, 5, 16, PAL.metal, '#ffffff', PAL.metalDark);
+    Px.bev(c, x + 5, y + 9, 18, 6, PAL.metal, '#ffffff', PAL.metalDark);
     // alette
-    r(8, 0, 2, 9, PAL.metalDark);
-    // corpo
-    r(10, 1, 28, 7, PAL.ink);
-    r(11, 2, 26, 5, '#eaf7ff');
-    r(11, 2, 22, 5, '#7fd3ff');
-    r(11, 2, 22, 1, '#bfe9ff');
-    // scritta PFIZER
-    Px.text(ctx, 'PFIZER', x + 12, y + 2, PAL.ink, 1);
+    Px.bev(c, x + 23, y, 5, 24, PAL.metal, '#ffffff', PAL.metalDark);
+    // corpo trasparente
+    c.fillStyle = PAL.ink; c.fillRect(x + 28, y + 2, 112, 20);
+    c.fillStyle = '#eaf7ff'; c.fillRect(x + 29, y + 3, 110, 18);
+    c.fillStyle = '#7fd3ff'; c.fillRect(x + 29, y + 7, 92, 14);
+    c.fillStyle = '#bfe9ff'; c.fillRect(x + 29, y + 3, 110, 3);
+    c.fillStyle = '#5ab8ec'; c.fillRect(x + 29, y + 19, 92, 2);
     // tacche graduate
-    for (let i = 0; i < 6; i++) r(12 + i * 4, 7, 1, 1, PAL.blueDark);
+    for (let i = 0; i < 12; i++) { c.fillStyle = PAL.blueDark; c.fillRect(x + 34 + i * 9, y + 3, 1, i % 2 ? 3 : 5); }
+    // scritta PFIZER
+    Px.text(c, 'PFIZER', x + 38, y + 6, PAL.ink, 2);
     // punta e ago
-    r(38, 3, 3, 3, PAL.metalDark);
-    r(41, 4, 10, 1, PAL.metal);
-    r(41, 4, 10, 1, '#e9eef2');
-    r(50, 4, 1, 1, PAL.white);
+    Px.bev(c, x + 140, y + 7, 8, 8, PAL.metal, '#ffffff', PAL.metalDark);
+    c.fillStyle = '#e9eef2'; c.fillRect(x + 148, y + 10, 34, 2);
+    c.fillStyle = PAL.metalDark; c.fillRect(x + 148, y + 12, 34, 1);
+    c.fillStyle = '#ffffff'; c.fillRect(x + 181, y + 10, 2, 2);
+    // goccia sull'ago
+    c.fillStyle = '#7fd3ff'; c.fillRect(x + 181, y + 14, 2, 3);
   }
 
-  function build(frame) {
-    return Px.make(54, 50, (ctx) => {
-      const cx = 26;
-      const bob = frame === 0 ? 0 : 1;
-      const r = (a, b, w, h, c) => Px.rect(ctx, a, b, w, h, c);
-      const WH = '#ffffff';
-      const SH = '#cfd8de';
-      // gambe
-      r(cx - 5, 43, 4, frame === 0 ? 4 : 2, '#f4f6f8');
-      r(cx + 1, 43, 4, frame === 0 ? 2 : 4, '#f4f6f8');
-      r(cx - 6, frame === 0 ? 47 : 45, 5, 2, PAL.blueDark);
-      r(cx + 1, frame === 0 ? 45 : 47, 5, 2, PAL.blueDark);
-      // gonna / fianchi abbondanti (caricatura)
-      r(cx - 10, 37, 20, 6, WH);
-      r(cx - 9, 34, 18, 3, WH);
-      r(cx - 10, 42, 20, 1, SH);
-      r(cx - 3, 38, 1, 4, SH);
-      // vita e fiocco
-      r(cx - 5, 30, 10, 4, WH);
-      r(cx - 5, 32, 10, 1, PAL.red);
-      r(cx + 3, 31, 4, 3, PAL.red);
-      r(cx + 4, 34, 1, 2, PAL.redDark);
-      // spalle e schiena
-      r(cx - 8, 25, 16, 5, WH);
-      r(cx - 8, 29, 16, 1, SH);
-      r(cx - 1, 25, 2, 4, SH);
-      // collo
-      r(cx - 2, 24, 4, 1, '#f2c9a5');
-      // capelli e cuffia
-      r(cx - 6, 15, 12, 9, '#4a3224');
-      r(cx - 6, 22, 12, 2, '#33211a');
-      r(cx + 5, 16 + bob, 3, 8, '#4a3224');
-      r(cx + 6, 24 + bob, 2, 2, '#4a3224');
-      r(cx - 6, 12, 12, 3, WH);
-      r(cx - 6, 14, 12, 1, SH);
-      r(cx - 1, 12, 2, 3, PAL.red);
-      // braccia alzate che reggono la siringa
-      r(cx - 10, 11 - bob, 3, 14, '#f2c9a5');
-      r(cx + 7, 11 - bob, 3, 14, '#f2c9a5');
-      r(cx - 10, 20, 3, 6, WH);
-      r(cx + 7, 20, 3, 6, WH);
-      // siringa gigante sopra la testa
-      syringe(ctx, 1, 2 - bob);
+  function build(view, frame) {
+    const W = 216, Ht = 190;
+    const bob = frame ? 2 : 0;
+    return Px.make(W, Ht, (c) => {
+      const cx = 108;
+      // ---------- gambe e scarpe ----------
+      const legY = 142;
+      const lp = frame ? [0, 4] : [4, 0];
+      for (const [dx, off] of [[-22, lp[0]], [22, lp[1]]]) {
+        Px.bev(c, cx + dx - 8, legY, 16, 32 - off, '#f4f6f8', WHITE, SH);
+        Px.ell(c, cx + dx, legY + 34 - off, 11, 5, PAL.blueDark);
+        c.fillStyle = PAL.blue; c.fillRect(cx + dx - 9, legY + 31 - off, 18, 2);
+      }
+      // ---------- gonna / fianchi abbondanti ----------
+      Px.ell(c, cx, 132, 52, 22, WHITE);
+      Px.ell(c, cx, 128, 46, 20, WHITE);
+      c.fillStyle = SH; c.fillRect(cx - 52, 140, 104, 6);
+      c.fillStyle = SH2; for (let i = -40; i <= 40; i += 20) c.fillRect(cx + i, 134, 1, 12);
+      // ---------- vita ----------
+      Px.ell(c, cx, 108, 30, 14, WHITE);
+      c.fillStyle = PAL.red; c.fillRect(cx - 30, 112, 60, 5);
+      c.fillStyle = PAL.redDark; c.fillRect(cx - 30, 116, 60, 1);
+      // ---------- busto ----------
+      Px.ell(c, cx, 92, 38, 22, WHITE);
+      c.fillStyle = SH; c.fillRect(cx - 38, 106, 76, 3);
+      // ---------- braccia alzate che reggono la siringa ----------
+      for (const sx of [-1, 1]) {
+        const ax = cx + sx * 44;
+        Px.line(c, ax, 96 - bob, ax + sx * 8, 54 - bob, 12, H_SKIN);
+        Px.line(c, ax, 96 - bob, ax, 80 - bob, 15, WHITE);       // manica
+        Px.ell(c, ax + sx * 8, 50 - bob, 8, 8, H_SKIN);          // mano
+      }
+      // ---------- testa ----------
+      const hy = 64 + bob;
+      if (view === 'back') Px.ell(c, cx, hy + 4, 26, 28, HAIR);   // capelli
+      else {                                                      // vista frontale: capelli solo attorno al viso (niente 'barba')
+        Px.ell(c, cx, hy - 2, 25, 21, HAIR);
+        c.fillStyle = HAIR; c.fillRect(cx - 26, hy - 2, 7, 22); c.fillRect(cx + 19, hy - 2, 7, 22);
+        c.fillStyle = HAIR_HI; c.fillRect(cx - 24, hy + 2, 1, 12); c.fillRect(cx + 23, hy + 2, 1, 12);
+      }
+      if (view === 'back') {
+        c.fillStyle = HAIR_HI; c.fillRect(cx - 14, hy - 12, 20, 2); c.fillRect(cx + 4, hy + 6, 14, 2);
+        Px.ell(c, cx, hy + 26, 20, 8, HAIR);                     // codino pesante dietro
+      } else {
+        Px.ell(c, cx, hy + 6, 20, 22, '#f2c9a5');                // viso
+        Px.ell(c, cx - 11, hy + 14, 4, 2, '#f1a58e'); Px.ell(c, cx + 11, hy + 14, 4, 2, '#f1a58e');
+        for (const ex of [-9, 5]) {                              // occhi con ciglia e sguardo furbo
+          c.fillStyle = '#ffffff'; c.fillRect(cx + ex, hy + 2, 8, 8);
+          c.fillStyle = '#3a2210'; c.fillRect(cx + ex + 2, hy + 3, 5, 7);
+          c.fillStyle = '#ffffff'; c.fillRect(cx + ex + 2, hy + 3, 2, 2);
+          c.fillStyle = PAL.ink; c.fillRect(cx + ex - 1, hy + 1, 10, 1);
+        }
+        Px.line(c, cx - 11, hy - 1, cx - 3, hy - 4, 2, '#3a2418');   // sopracciglia alzate: furbetta, non cattiva
+        Px.line(c, cx + 11, hy - 1, cx + 3, hy - 4, 2, '#3a2418');
+        c.fillStyle = '#c4605a'; c.fillRect(cx - 7, hy + 16, 14, 2); c.fillRect(cx - 9, hy + 14, 2, 2); c.fillRect(cx + 7, hy + 14, 2, 2);
+        c.fillStyle = '#ffffff'; c.fillRect(cx - 5, hy + 18, 10, 3);  // sorriso a denti
+        c.fillStyle = '#c4605a'; c.fillRect(cx - 5, hy + 21, 10, 1);
+        c.fillStyle = '#e0a98a'; c.fillRect(cx - 1, hy + 10, 2, 3);
+      }
+      // cuffia da infermiera
+      Px.ell(c, cx, hy - 14, 24, 11, WHITE);
+      c.fillStyle = SH; c.fillRect(cx - 24, hy - 6, 48, 3);
+      c.fillStyle = PAL.red; c.fillRect(cx - 3, hy - 22, 6, 12); c.fillRect(cx - 6, hy - 19, 12, 6);
+      // ---------- dettagli ----------
+      if (view === 'back') {
+        c.fillStyle = SH; c.fillRect(cx, 74, 1, 40);
+        Px.ell(c, cx, 118, 12, 6, PAL.red);                      // fiocco sul retro
+        c.fillStyle = PAL.redDark; c.fillRect(cx - 12, 118, 24, 1);
+      } else {
+        c.fillStyle = SH2; for (let y = 82; y < 112; y += 8) c.fillRect(cx - 1, y, 2, 2);
+        c.fillStyle = '#ffffff'; c.fillRect(cx + 14, 88, 12, 9);  // targhetta
+        c.fillStyle = PAL.red; c.fillRect(cx + 19, 89, 2, 7); c.fillRect(cx + 16, 91, 8, 2);
+      }
+      // ---------- siringa gigante ----------
+      syringe(c, 6, 4 - bob);
     });
   }
 
-  function get(frame) {
-    if (!cache[frame]) cache[frame] = Px.outlined(build(frame));
-    return cache[frame];
+  const H_SKIN = '#f2c9a5';
+
+  function get(frame, view = 'back') {
+    const key = view + frame;
+    if (!cache[key]) cache[key] = Px.outlined(build(view, frame ? 1 : 0));
+    return cache[key];
   }
 
-  return { get };
+  // Disegna l'infermiera: x = centro del corpo, yBottom = base dei piedi, k = scala
+  function draw(ctx, x, yBottom, k = 1, frame = 0, view = 'back') {
+    Px.blit(ctx, get(frame, view), x - 0, yBottom, k);
+  }
+
+  return { get, draw };
 })();

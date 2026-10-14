@@ -2,7 +2,12 @@
 (() => {
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+  // Risoluzione reale 360x640; si disegna in unita' di progetto 180x320 (1 unita' = 2 pixel reali).
+  const RES = 2;
+  canvas.width = CFG.W * RES; canvas.height = CFG.H * RES;
+  ctx.setTransform(RES, 0, 0, RES, 0, 0);
   ctx.imageSmoothingEnabled = false;
+  ctx.__q = 1 / RES;
 
   let scene = null;
   let trans = null;   // { phase: 'out'|'in', t, time, color, next }
@@ -18,6 +23,7 @@
 
   function make(name, params) {
     if (name === 'menu') return MenuScene(app);
+    if (name === 'intro') return IntroScene(app, params);
     if (name === 'game') return GameScene(app, params.outfit || 'uniforme');
     if (name === 'finale') return FinaleScene(app, params);
     throw new Error('Scena sconosciuta: ' + name);
