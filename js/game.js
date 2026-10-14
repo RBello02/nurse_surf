@@ -59,6 +59,7 @@ function GameScene(app, outfit) {
     const d = Px.clamp(g.time / CFG.RAMP_TIME, 0, 1);
     while (g.nextRowW < st.T + 3.1) {
       if (g.cfu >= CFG.CFU_GOAL) { startCorridor(); break; }
+      if (!g.doorDone && g.uniGate && g.phase === 'run' && g.cfu >= CFG.DOOR.atCfu) { startDoor(); break; }
       if (!g.uniGate && g.cfu >= CFG.UNI_AT_CFU) startUni();
       spawnRow(g.nextRowW, d);
       const gapW = Px.lerp(1.25, 0.88, d) * g.speed;
@@ -86,6 +87,153 @@ function GameScene(app, outfit) {
     Sfx.warn();
   }
 
+  // ---------- indovinello delle tre porte ----------
+  const DOOR_X = [30, 90, 150], DOOR_BOTTOM = 222, HERO_DOOR_FEET = 244, HERO_DOOR_K = 1.25;
+  const DOOR_BOXES = DOOR_X.map((x) => ({ x: x - 21, y: 158, w: 42, h: 68 }));
+  const NURSE_K = 0.8, NURSE_TIP = 63, TH_BACK = -0.2, TH_STAB = 0.6;
+
+  function startDoor() {
+    const kinds = ['sleep', 'talk', 'eat'].sort(() => Math.random() - 0.5);
+    g.phase = 'door'; g.doorDone = true;
+    g.door = { state: 'arrive', t: 0, order: kinds, sel: 1, pick: -1, result: null, ev: {}, stabbed: false };
+    g.objs = g.objs.filter((o) => o.w - st.T < 0.05);
+    g.lane = 1; g.jumpT = 0; g.slideT = 0;
+  }
+
+  function pickDoor(i) {
+    const d = g.door;
+    if (!d || d.state !== 'ask') return;
+    d.pick = i; d.state = 'anim'; d.t = 0;
+    d.result = d.order[i] === CFG.DOOR.right ? 'right' : 'wrong';
+    d.hx = Px.clamp(DOOR_X[i], 40, 140);
+    d.dir = d.hx <= 90 ? 1 : -1;            // da che lato arriva l'infermiera (1 = da destra)
+    Sfx.select();
+  }
+
+  function updateDoor(dt) {
+    const d = g.door;
+    d.t += dt;
+    g.laneF += (1 - g.laneF) * Math.min(1, dt * 6);
+    g.chaserLane += (g.laneF - g.chaserLane) * Math.min(1, dt * 4);
+    g.gapV += (g.gapTarget - g.gapV) * Math.min(1, dt * 3);
+    if (d.state === 'arrive') {
+      g.speed = Math.max(0, g.speed - dt * 2.2);
+      st.T += g.speed * dt;
+      if (g.speed < 0.02 && d.t > 0.6) { g.speed = 0; d.state = 'ask'; d.t = 0; Sfx.warn(); }
+      return;
+    }
+    if (d.state !== 'anim') return;
+    const once = (k, tm, fn) => { if (!d.ev[k] && d.t >= tm) { d.ev[k] = true; fn(); } };
+    if (d.result === 'right') {
+      once('open', 0.6, () => Sfx.door());
+      once('ok', 0.9, () => { Sfx.start(); fx.confetti(W, [PAL.gold, '#fff', PAL.green, PAL.blue]); });
+      once('flash', 1.9, () => { g.flash = 0.45; });
+      if (d.t >= 2.1) {                       // si prosegue la corsa
+        g.phase = 'run'; g.door = null;
+        g.nextRowW = st.T + 2.6; g.invul = 1.2; g.speed = 0.6;
+      }
+    } else {
+      once('bump', 0.7, () => { Sfx.hit(); g.shake = 0.3; });
+      once('warn', 1.5, () => Sfx.warn());
+      once('stab', 2.95, () => { d.stabbed = true; g.flash = 0.35; g.shake = 0.5; Sfx.hit(); fx.burst(d.hx, HERO_DOOR_FEET - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
+      if (d.t >= 4.5) { g.hits = CFG.MAX_HITS; g.phase = 'caught'; g.phaseT = 1.5; g.door = null; g.gapTarget = -0.2; Sfx.stopMusic(); finish(); }
+    }
+  }
+
+  function drawDoorScene(ctx) {
+    const d = g.door;
+    const pop = d.state === 'ask' ? Px.ease(Px.clamp(d.t / 0.4, 0, 1)) : (d.state === 'anim' ? 1 : 0);
+    // chaser dietro (non nella sequenza della puntura: arriva quella frontale)
+    if (pop > 0) {
+      Px.rect(ctx, 0, 112, W, 116, '#efe2c8'); Px.rect(ctx, 0, 112, W, 4, '#b4573d'); Px.rect(ctx, 0, 124, W, 30, 'rgba(180,87,61,0.35)');
+      Px.rect(ctx, 0, 224, W, 5, '#4a2f1a');
+      const wrong = d.result === 'wrong';
+      for (let i = 0; i < 3; i++) {
+        const kind = d.order[i], dr = Doors.get(kind), x = DOOR_X[i];
+        const dy = (1 - pop) * 26;
+        ctx.globalAlpha = pop;
+        let shake = 0, open = 0;
+        if (d.state === 'anim' && d.pick === i) {
+          if (d.result === 'right') open = Px.ease(Px.clamp((d.t - 0.6) / 0.5, 0, 1));
+          else if (d.t > 0.7 && d.t < 1.5) shake = Math.sin(d.t * 60) * 1.4 * (1.5 - d.t);
+        }
+        const sel = (d.state === 'ask' && d.sel === i) || (d.state === 'anim' && d.pick === i);
+        if (sel) Px.rect(ctx, x - 22 + shake, 156 + dy, 44, 70, (Math.floor(g.frameT * 5) % 2 && d.state === 'ask') ? '#ffffff' : PAL.gold);
+        Px.blit(ctx, dr.base, x + shake, DOOR_BOTTOM + dy, 1);
+        ctx.imageSmoothingEnabled = false;
+        const lw = 33 * (1 - open * 0.88);
+        ctx.drawImage(dr.leaf, x - 16.5 + shake, 162 + dy, lw, 60);
+        // cartello con la scelta
+        const lab = CFG.DOOR.labels[kind], tw = Px.textWidth(lab, 2) + 6;
+        Px.rect(ctx, x - tw / 2 + shake, 143 + dy, tw, 12, PAL.ink); Px.rect(ctx, x - tw / 2 + 1 + shake, 144 + dy, tw - 2, 10, '#fff3b0');
+        Px.text(ctx, lab, x + shake, 146.5 + dy, PAL.ink, 2, 'center');
+        if (wrong && d.pick === i && d.t > 0.7) {                  // porta bloccata: X rossa e lucchetto
+          Px.line(ctx, x - 9 + shake, 182, x + 9 + shake, 204, 3, PAL.ink); Px.line(ctx, x + 9 + shake, 182, x - 9 + shake, 204, 3, PAL.ink);
+          Px.line(ctx, x - 9 + shake, 182, x + 9 + shake, 204, 1.5, PAL.red); Px.line(ctx, x + 9 + shake, 182, x - 9 + shake, 204, 1.5, PAL.red);
+        }
+        ctx.globalAlpha = 1;
+      }
+      // titolo
+      const q = CFG.DOOR.question, tw = Px.textWidth(q, 2) + 14;
+      let msg = q, col = '#ffffff';
+      if (d.state === 'anim' && d.result === 'right' && d.t > 0.6) { msg = 'GIUSTO! BRAVA!'; col = '#7ee08f'; }
+      if (d.state === 'anim' && d.result === 'wrong' && d.t > 0.7) { msg = 'PORTA CHIUSA!'; col = '#ff8a9a'; }
+      const mw = Math.max(tw, Px.textWidth(msg, 2) + 14);
+      ctx.globalAlpha = pop;
+      Px.rect(ctx, 90 - mw / 2, 78, mw, 24, PAL.ink); Px.rect(ctx, 90 - mw / 2 + 1, 79, mw - 2, 22, '#1f3a7a');
+      Px.rect(ctx, 90 - mw / 2 + 1, 79, mw - 2, 2, '#4a69b0');
+      Px.text(ctx, msg, 90, 86, col, 2, 'center', '#0e1a3d');
+      ctx.globalAlpha = 1;
+      if (d.state === 'ask' && Math.floor(g.frameT * 2) % 2 === 0) Px.text(ctx, 'TOCCA LA PORTA', 90, 108, '#ffffff', 1, 'center', PAL.ink);
+    }
+    // Martina
+    let hx = World.laneXf(g.laneF, 1), feet = PY, k = HK, pose = 'stand', alpha = 1;
+    const runPose = (Math.floor(g.frameT * 9) % 2) ? 'run1' : 'run0';
+    if (d.state === 'arrive') pose = runPose;
+    if (d.state === 'ask') { hx = 90; pose = 'stand'; }
+    if (d.state === 'anim') {
+      const walk = Px.ease(Px.clamp(d.t / 0.6, 0, 1)), fromX = 90;
+      hx = Px.lerp(fromX, d.hx, walk); feet = Px.lerp(PY, HERO_DOOR_FEET, walk); k = Px.lerp(HK, HERO_DOOR_K, walk);
+      pose = d.t < 0.6 ? runPose : 'stand';
+      if (d.result === 'right' && d.t >= 1.2) {
+        hx = Px.lerp(d.hx, DOOR_X[d.pick], Px.clamp((d.t - 1.2) / 0.7, 0, 1));
+        const p = Px.clamp((d.t - 1.2) / 0.7, 0, 1);
+        feet = Px.lerp(HERO_DOOR_FEET, DOOR_BOTTOM + 2, p); k = Px.lerp(HERO_DOOR_K, 0.7, p); alpha = 1 - p * 0.7; pose = runPose;
+      }
+      if (d.result === 'right' && d.t > 0.9 && d.t < 1.2) pose = 'cheer';
+      if (d.stabbed) { pose = 'jump'; hx += Math.sin(d.t * 50) * 1.5; feet -= Math.abs(Math.sin((d.t - 2.95) * 9)) * 8; }
+    }
+    ctx.fillStyle = 'rgba(16,21,31,0.28)'; ctx.fillRect(hx - 12, feet - 1, 24, 2.5);
+    ctx.globalAlpha = alpha;
+    Hero.draw(ctx, outfit, pose, hx, feet, k);
+    ctx.globalAlpha = 1;
+    // infermiera che arriva con la siringa
+    if (d.state === 'anim' && d.result === 'wrong' && d.t > 1.5) {
+      const finalX = d.hx + d.dir * (NURSE_TIP + 4);
+      const off = d.dir > 0 ? W + 70 : -70;
+      const p = Px.ease(Px.clamp((d.t - 1.5) / 0.9, 0, 1));
+      const nx = Px.lerp(off, finalX, p);
+      let th = 0;
+      if (d.t > 2.4 && d.t < 2.8) th = TH_BACK * Px.ease((d.t - 2.4) / 0.4);
+      else if (d.t >= 2.8) th = Px.lerp(TH_BACK, TH_STAB, Px.clamp((d.t - 2.8) / 0.15, 0, 1));
+      const moving = d.t < 2.4;
+      const bounce = moving ? Math.abs(Math.sin(d.t * 14)) * 3 : 0;
+      ctx.fillStyle = 'rgba(16,21,31,0.25)'; ctx.fillRect(nx - 22, feet - 1, 44, 3);
+      ctx.save();
+      ctx.translate(nx, feet + 4 - bounce);
+      ctx.rotate(d.dir > 0 ? -th : th);
+      Px.blit(ctx, Chaser.get(moving ? (Math.floor(d.t * 10) % 2) : 0, 'front', d.dir > 0), 0, 0, NURSE_K);
+      ctx.restore();
+      if (d.t > 1.5 && d.t < 2.4) Px.text(ctx, '!', hx, feet - 62 + Math.sin(d.t * 16) * 1.2, PAL.red, 6, 'center', '#ffffff');
+      if (d.stabbed) {
+        const sp = d.t - 2.95;
+        if (sp < 1.2) Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff');
+        if (sp > 0.5 && sp < 1.4) Px.text(ctx, 'PUNTURA!', 90, 112, PAL.gold, 5, 'center', PAL.ink);
+      }
+    }
+    if (d.state === 'anim' && d.result === 'wrong' && d.t > 3.9) { ctx.fillStyle = `rgba(16,21,31,${Math.min(1, (d.t - 3.9) / 0.6)})`; ctx.fillRect(0, 0, W, H); }
+  }
+
   // ---------- azioni del giocatore ----------
   function jumpHeight() {
     if (g.jumpT <= 0) return 0;
@@ -95,6 +243,14 @@ function GameScene(app, outfit) {
 
   function act(action) {
     if (g.paused || g.phase === 'caught' || g.phase === 'over' || g.phase === 'finishing') return;
+    if (g.phase === 'door') {
+      const d = g.door;
+      if (!d || d.state !== 'ask') return;
+      if (action === 'left') { d.sel = Math.max(0, d.sel - 1); Sfx.lane(); }
+      else if (action === 'right') { d.sel = Math.min(2, d.sel + 1); Sfx.lane(); }
+      else if (action === 'up' || action === 'confirm' || action === 'down') pickDoor(d.sel);
+      return;
+    }
     if (action === 'left' && g.lane > 0) { g.lane--; Sfx.lane(); }
     else if (action === 'right' && g.lane < CFG.LANES - 1) { g.lane++; Sfx.lane(); }
     else if (action === 'up') {
@@ -165,6 +321,8 @@ function GameScene(app, outfit) {
       if (g.phaseT > 1.5) finish();
       return;
     }
+
+    if (g.phase === 'door') { updateDoor(dt); return; }
 
     g.time += dt; g.sinceHit += dt;
     g.invul = Math.max(0, g.invul - dt);
@@ -313,12 +471,12 @@ function GameScene(app, outfit) {
     ctx.drawImage(medalImg, 4, 36, medalImg.width * 0.25, medalImg.height * 0.25);
     Px.text(ctx, g.cfu + '/' + CFG.CFU_GOAL + ' CFU', 22, 40, '#ffe27a', 3, 'left', PAL.ink);
     // cartello di benvenuto all'universita'
-    if (g.zoneBannerT > 0) {
+    if (g.zoneBannerT > 0 && g.phase !== 'door') {
       ctx.globalAlpha = Px.clamp(g.zoneBannerT / 0.6, 0, 1);
-      Px.rect(ctx, 8, 100, W - 16, 40, 'rgba(16,21,31,0.7)');
-      Px.rect(ctx, 8, 100, W - 16, 2, '#f6c344'); Px.rect(ctx, 8, 138, W - 16, 2, '#f6c344');
-      Px.text(ctx, 'BENVENUTA', W / 2, 108, '#ffffff', 3, 'center', PAL.ink);
-      Px.text(ctx, "ALL'UNIVERSITA'!", W / 2, 122, '#f6c344', 3, 'center', PAL.ink);
+      Px.rect(ctx, 24, 104, W - 48, 28, 'rgba(16,21,31,0.7)');
+      Px.rect(ctx, 24, 104, W - 48, 1.5, '#f6c344'); Px.rect(ctx, 24, 130.5, W - 48, 1.5, '#f6c344');
+      Px.text(ctx, 'BENVENUTA', W / 2, 110, '#ffffff', 2, 'center', PAL.ink);
+      Px.text(ctx, "ALL'UNIVERSITA'!", W / 2, 121, '#f6c344', 2, 'center', PAL.ink);
       ctx.globalAlpha = 1;
     }
     // tutorial
@@ -344,12 +502,13 @@ function GameScene(app, outfit) {
     const objs = g.objs.slice().sort((a, b) => b.w - a.w);
     let heroDone = false;
     for (const o of objs) {
-      if (!heroDone && o.w - st.T <= 0) { drawHero(ctx); heroDone = true; }
+      if (!heroDone && o.w - st.T <= 0) { if (g.phase !== 'door') drawHero(ctx); heroDone = true; }
       drawObj(ctx, o);
     }
-    if (!heroDone) drawHero(ctx);
+    if (!heroDone && g.phase !== 'door') drawHero(ctx);
     for (const o of objs) drawHint(ctx, o);
-    drawChaser(ctx);
+    if (!(g.phase === 'door' && g.door && g.door.result === 'wrong' && g.door.t > 0.7)) drawChaser(ctx);
+    if (g.phase === 'door' && g.door) drawDoorScene(ctx);
     fx.draw(ctx);
     ctx.restore();
 
@@ -390,7 +549,10 @@ function GameScene(app, outfit) {
         else if (Px.hit(BTN_QUIT, p, 3)) { Sfx.select(); app.go('menu'); }
         return;
       }
-      if (Px.hit(PAUSE_BTN, p, 6)) { Sfx.select(); setPaused(true); }
+      if (Px.hit(PAUSE_BTN, p, 6)) { Sfx.select(); setPaused(true); return; }
+      if (g.phase === 'door' && g.door && g.door.state === 'ask') {
+        for (let i = 0; i < 3; i++) if (Px.hit(DOOR_BOXES[i], p, 3)) { g.door.sel = i; pickDoor(i); return; }
+      }
       return;
     }
     act(action);
@@ -399,14 +561,14 @@ function GameScene(app, outfit) {
   function setPaused(v) {
     if (g.phase === 'over' || g.phase === 'finishing') return;
     g.paused = v;
-    if (v) Sfx.stopMusic(); else if (g.phase === 'run' || g.phase === 'corridor') Sfx.startMusic();
+    if (v) Sfx.stopMusic(); else if (g.phase === 'run' || g.phase === 'corridor' || g.phase === 'door') Sfx.startMusic();
   }
 
   return {
     enter() { Sfx.start(); Sfx.startMusic(); },
     leave() { Sfx.stopMusic(); },
     update, render, input,
-    pause() { if (g.phase === 'run' || g.phase === 'corridor') setPaused(true); },
+    pause() { if (g.phase === 'run' || g.phase === 'corridor' || g.phase === 'door') setPaused(true); },
     debug: { g, st }
   };
 }

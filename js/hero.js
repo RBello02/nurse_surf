@@ -69,7 +69,6 @@ const Hero = (() => {
         Px.line(ctx, a[0][0], a[0][1], a[1][0], a[1][1], 7, o.top);
         const wx = a[1][0] + (a[2][0] - a[1][0]) * 0.8, wy = a[1][1] + (a[2][1] - a[1][1]) * 0.8;
         Px.line(ctx, a[1][0], a[1][1], wx, wy, 6, o.top);
-        Px.ell(ctx, wx, wy, 3, 2, '#ffffff');
       }
       else if (outfit === 'elegante') Px.line(ctx, a[0][0], a[0][1], a[1][0], a[1][1], 7, o.top);  // manica lunga fino al gomito
       // mano
@@ -81,13 +80,11 @@ const Hero = (() => {
   function torso(ctx, outfit) {
     const o = OUT[outfit];
     if (outfit === 'casual') {
-      // blazer nero aperto su camicia bianca
+      // blazer nero con scollo a V profondo (niente camicia), risvolti e taschini
       Px.bev(ctx, 13, 33, 18, 20, o.top, o.topHi, o.topLo);
-      for (let i = 0; i < 11; i++) { ctx.fillStyle = '#ffffff'; const hw = Math.max(1, 3 - (i > 6 ? i - 6 : 0)); ctx.fillRect(22 - hw, 33 + i, hw * 2 + 1, 1); }  // camicia
-      ctx.fillStyle = '#d3dce2'; ctx.fillRect(22, 35, 1, 8);
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(17, 33, 4, 2); ctx.fillRect(24, 33, 4, 2);               // colletto
-      ctx.fillStyle = H.skin; ctx.fillRect(20, 33, 5, 1);
-      Px.line(ctx, 18, 34, 21, 45, 1, o.topHi); Px.line(ctx, 27, 34, 23, 45, 1, o.topHi);               // risvolti
+      for (let i = 0; i < 11; i++) { const hw = 5 - Math.floor(i * 0.5); if (hw < 0) break; ctx.fillStyle = H.skin; ctx.fillRect(22 - hw, 33 + i, hw * 2 + 1, 1); }
+      ctx.fillStyle = H.skinShade; ctx.fillRect(22, 43, 1, 1);
+      Px.line(ctx, 16, 33, 22, 45, 1, o.topHi); Px.line(ctx, 28, 33, 22, 45, 1, o.topHi);                // risvolti
       ctx.fillStyle = o.topLo; ctx.fillRect(14, 47, 6, 1); ctx.fillRect(25, 47, 6, 1);                 // tasche
       ctx.fillStyle = '#c8cfd6'; ctx.fillRect(22, 46, 1, 1);                                           // bottone
       ctx.fillStyle = o.topLo; ctx.fillRect(13, 51, 18, 2);
@@ -202,7 +199,7 @@ const Hero = (() => {
     shoe(ctx, o, 6, 51); shoe(ctx, o, 40, 51);
     // busto inclinato in avanti
     Px.bev(ctx, 12, 32, 20, 13, o.top, o.topHi, o.topLo);
-    if (outfit === 'casual') { ctx.fillStyle = '#ffffff'; ctx.fillRect(19, 32, 6, 7); }
+    if (outfit === 'casual') { ctx.fillStyle = H.skin; ctx.fillRect(19, 32, 6, 2); ctx.fillRect(20, 34, 4, 2); ctx.fillRect(21, 36, 2, 2); }
     if (outfit === 'uniforme') { ctx.fillStyle = '#ffffff'; ctx.fillRect(26, 36, 4, 4); ctx.fillStyle = o.accent; ctx.fillRect(27, 37, 2, 2); }
     // braccia in avanti
     Px.line(ctx, 14, 36, 8, 42, 5, H.skin); Px.ell(ctx, 7, 43, 3, 3, H.skin);
@@ -240,7 +237,7 @@ const Chaser = (() => {
   const WHITE = '#ffffff', SH = '#d3dce2', SH2 = '#aab6bf';
   const HAIR = '#5a3a28', HAIR_HI = '#7a5238';
 
-  function syringe(c, x, y) {
+  function syringe(c, x, y, flip) {
     // stantuffo e pollice
     Px.bev(c, x, y + 4, 5, 16, PAL.metal, '#ffffff', PAL.metalDark);
     Px.bev(c, x + 5, y + 9, 18, 6, PAL.metal, '#ffffff', PAL.metalDark);
@@ -255,7 +252,9 @@ const Chaser = (() => {
     // tacche graduate
     for (let i = 0; i < 12; i++) { c.fillStyle = PAL.blueDark; c.fillRect(x + 34 + i * 9, y + 3, 1, i % 2 ? 3 : 5); }
     // scritta PFIZER
-    Px.text(c, 'PFIZER', x + 38, y + 6, PAL.ink, 2);
+    if (flip) c.restore();   // il testo non deve risultare specchiato
+    if (flip) Px.text(c, 'PFIZER', 216 - (x + 38), y + 6, PAL.ink, 2, 'right'); else Px.text(c, 'PFIZER', x + 38, y + 6, PAL.ink, 2);
+    if (flip) { c.save(); c.translate(216, 0); c.scale(-1, 1); }
     // punta e ago
     Px.bev(c, x + 140, y + 7, 8, 8, PAL.metal, '#ffffff', PAL.metalDark);
     c.fillStyle = '#e9eef2'; c.fillRect(x + 148, y + 10, 34, 2);
@@ -265,10 +264,11 @@ const Chaser = (() => {
     c.fillStyle = '#7fd3ff'; c.fillRect(x + 181, y + 14, 2, 3);
   }
 
-  function build(view, frame) {
+  function build(view, frame, flip) {
     const W = 216, Ht = 190;
     const bob = frame ? 2 : 0;
     return Px.make(W, Ht, (c) => {
+      if (flip) { c.save(); c.translate(W, 0); c.scale(-1, 1); }
       const cx = 108;
       // ---------- gambe e scarpe ----------
       const legY = 142;
@@ -339,15 +339,16 @@ const Chaser = (() => {
         c.fillStyle = PAL.red; c.fillRect(cx + 19, 89, 2, 7); c.fillRect(cx + 16, 91, 8, 2);
       }
       // ---------- siringa gigante ----------
-      syringe(c, 6, 4 - bob);
+      syringe(c, 6, 4 - bob, flip);
+      if (flip) c.restore();
     });
   }
 
   const H_SKIN = '#f2c9a5';
 
-  function get(frame, view = 'back') {
-    const key = view + frame;
-    if (!cache[key]) cache[key] = Px.outlined(build(view, frame ? 1 : 0));
+  function get(frame, view = 'back', flip = false) {
+    const key = view + frame + (flip ? 'f' : '');
+    if (!cache[key]) cache[key] = Px.outlined(build(view, frame ? 1 : 0, flip));
     return cache[key];
   }
 

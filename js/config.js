@@ -27,6 +27,14 @@ const CFG = {
   CFU_GOAL: 150,
   CFU_PER_MEDAL: 3,
   UNI_AT_CFU: 60,
+  // Indovinello delle tre porte: a DOOR.atCfu la corsa si ferma. Risposta giusta = si entra e si prosegue,
+  // sbagliata = la porta resta chiusa e l'infermiera fa la puntura (fine partita).
+  DOOR: {
+    atCfu: 105,
+    question: 'QUANDO SI DORME?',
+    right: 'sleep',
+    labels: { sleep: 'SI DORME', talk: 'SI PARLA', eat: 'SI MANGIA' }
+  },
   ZONES: {
     hospital: { bubbles: ['SOLO UNA PUNTURINA!', 'FERMA LI!', 'NON FA MALE!', 'VIENI QUI!'] },
     uni: { gate: "UNIVERSITA'", banner: "BENVENUTA ALL'UNIVERSITA'!", bubbles: ['ANCHE ALL\'UNI!', 'TI TROVO OVUNQUE!', 'RICHIAMO VACCINALE!', 'VIENI QUI!'] }
