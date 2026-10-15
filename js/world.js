@@ -150,6 +150,8 @@ const World = (() => {
         if (u > 0.4 && u < 0.6) vr(ctx, x, Y, 0.42, 0.5, '#ffffff');
       }
     }
+    // corrimano lungo la parete
+    vr(ctx, x, Y, 0.27, 0.31, '#b4c0c8'); vr(ctx, x, Y, 0.3, 0.31, '#e8eef1'); vr(ctx, x, Y, 0.27, 0.275, '#8493a0');
   }
 
   function drawEndFace(ctx, st) {

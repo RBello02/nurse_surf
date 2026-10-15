@@ -13,15 +13,15 @@ function MenuScene(app) {
 
   function drawTitle(ctx) {
     const bob = Math.sin(t * 2.5) * 1.5;
-    Px.text(ctx, 'NURSE', W / 2, 8 + bob, PAL.white, 8, 'center', PAL.ink);
-    Px.text(ctx, 'SURF', W / 2 - 8, 40 + bob, PAL.gold, 8, 'center', PAL.ink);
+    Px.text(ctx, 'NURSE', W / 2, 3 + bob, PAL.white, 8, 'center', PAL.ink);
+    Px.text(ctx, 'SURF', W / 2 - 8, 33 + bob, PAL.gold, 8, 'center', PAL.ink);
     // croce rossa accanto al titolo
-    const cx = W / 2 + 48, cy = 42 + bob;
+    const cx = W / 2 + 48, cy = 35 + bob;
     Px.rect(ctx, cx - 1, cy - 1, 20, 20, PAL.ink);
     Px.rect(ctx, cx, cy, 18, 18, '#ffffff');
     Px.rect(ctx, cx + 6, cy + 2, 6, 14, PAL.red);
     Px.rect(ctx, cx + 2, cy + 6, 14, 6, PAL.red);
-    Px.text(ctx, 'LE AVVENTURE DI ' + CFG.NAME, W / 2, 74, '#ffffff', 2, 'center', PAL.ink);
+    Px.text(ctx, 'LE AVVENTURE DI ' + CFG.NAME, W / 2, 66, '#ffffff', 2, 'center', PAL.ink);
   }
 
   function drawMute(ctx) {
@@ -42,6 +42,10 @@ function MenuScene(app) {
     ctx.fillRect(0, 0, W, H);
     drawTitle(ctx);
 
+    // alone di luce dietro Martina
+    const glow = ctx.createRadialGradient(W / 2, 150, 4, W / 2, 150, 70);
+    glow.addColorStop(0, 'rgba(255,247,214,0.55)'); glow.addColorStop(1, 'rgba(255,247,214,0)');
+    ctx.fillStyle = glow; ctx.fillRect(W / 2 - 70, 80, 140, 140);
     // piedistallo + Martina (anteprima animata, scala 3 = pixel netti)
     const px = W / 2, py = 204;
     ctx.fillStyle = 'rgba(16,21,31,0.35)';

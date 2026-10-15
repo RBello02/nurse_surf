@@ -70,6 +70,16 @@ function IntroScene(app, params) {
     // porta a battenti a destra
     rr(ctx, 134, 112, 42, 126, '#6f8794'); rr(ctx, 137, 116, 36, 122, '#8fa7b3'); rr(ctx, 154, 116, 2, 122, '#6f8794');
     rr(ctx, 140, 124, 12, 24, '#9bd8ee'); rr(ctx, 158, 124, 12, 24, '#9bd8ee'); rr(ctx, 150, 168, 2, 12, '#c4ccd3'); rr(ctx, 158, 168, 2, 12, '#c4ccd3');
+    // finestra sulla citta'
+    rr(ctx, 56, 70, 66, 70, '#8fa7b3'); rr(ctx, 59, 73, 60, 64, '#9bd8ee');
+    for (let y = 73; y < 137; y += 4) rr(ctx, 59, y, 60, 4, y < 100 ? '#a9dff2' : '#c5ecf8');
+    for (const [bx, bw, bh] of [[61, 10, 22], [73, 8, 34], [83, 12, 18], [97, 9, 28], [108, 9, 20]]) { rr(ctx, bx, 137 - bh, bw, bh, '#7fa3b5'); for (let wy = 140 - bh; wy < 134; wy += 5) rr(ctx, bx + 2, wy, 2, 2, '#d9f1fa'); }
+    rr(ctx, 88, 73, 2, 64, '#8fa7b3'); rr(ctx, 59, 104, 60, 2, '#8fa7b3'); rr(ctx, 54, 140, 70, 3, '#b4c0c8');
+    // banco dell'accettazione
+    rr(ctx, 20, 198, 82, 40, '#4a6a78'); rr(ctx, 20, 198, 82, 4, '#e8eef1'); rr(ctx, 20, 202, 82, 2, '#2f4a56');
+    for (let x = 26; x < 98; x += 18) { rr(ctx, x, 208, 14, 26, '#587d8c'); rr(ctx, x, 208, 14, 2, '#7fa3b5'); }
+    rr(ctx, 70, 184, 22, 14, '#2c333d'); rr(ctx, 72, 186, 18, 9, '#7ec4e6'); rr(ctx, 78, 198, 6, 2, '#46515c');   // monitor
+    rr(ctx, 30, 192, 10, 6, '#ffd23f'); rr(ctx, 33, 189, 4, 3, '#c9962a');                                          // campanello
     // pianta
     rr(ctx, 100, 218, 18, 20, '#c0804a'); rr(ctx, 100, 218, 18, 3, '#d9a76a');
     for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#2f9e44' : '#3fb858'; ctx.beginPath(); ctx.ellipse(109 + (i - 2.5) * 5, 208 - (i % 3) * 5, 4, 12, (i - 2.5) * 0.28, 0, Math.PI * 2); ctx.fill(); }
@@ -171,6 +181,13 @@ function IntroScene(app, params) {
       else bubble(ctx, cur.lines, nx - 6, FEET - 112, nx - 32, '#fff3b0');
     } else if (t >= T_RUN && t < T_END() - 0.5) Px.text(ctx, 'SCAPPA!', W / 2, 120, PAL.gold, 7, 'center', PAL.ink);
 
+    if (t >= T_EXT) {   // luce dalla finestra sul pavimento + vignettatura leggera
+      ctx.fillStyle = 'rgba(255,255,230,0.16)';
+      ctx.beginPath(); ctx.moveTo(56, 241); ctx.lineTo(122, 241); ctx.lineTo(170, H); ctx.lineTo(90, H); ctx.closePath(); ctx.fill();
+      const vg = ctx.createRadialGradient(W / 2, H * 0.55, H * 0.3, W / 2, H * 0.55, H * 0.8);
+      vg.addColorStop(0, 'rgba(8,16,36,0)'); vg.addColorStop(1, 'rgba(8,16,36,0.22)');
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    }
     // dissolvenza fra esterno e atrio
     const a = Math.max(0, 1 - Math.abs(t - T_EXT) / 0.25);
     if (a > 0) { ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(0, 0, W, H); }
