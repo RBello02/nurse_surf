@@ -113,7 +113,7 @@ function FinaleScene(app, params) {
     let feet = FEET_END, pose = 'stand', lift = 0;
     if (t < T_WALK) {
       feet = Px.lerp(FEET_START, FEET_END, Px.ease(t / T_WALK));
-      pose = (Math.floor(t * 7) % 2) ? 'run1' : 'run0';
+      pose = Hero.run(t, 9).pose;
     } else if (t < T_FLY) {
       pose = t > T_LOOK + 0.2 ? 'cheer' : 'stand';
     } else {
@@ -177,7 +177,7 @@ function FinaleScene(app, params) {
 
     // infermiera: ora applaude e fa i complimenti
     if (t > T_CELEB) {
-      Chaser.draw(ctx, 38, 262 + Math.sin(t * 8) * 0.8, 0.7, Math.floor(t * 3) % 2, 'front');
+      Chaser.draw(ctx, 38, 262 + Math.sin(t * 8) * 0.8, 0.7, Math.floor(t * 5), 'front');
       const bw = Px.textWidth(CFG.FINALE.chaserLine, 2) + 10;
       Px.rect(ctx, 4, 176, bw, 16, PAL.ink);
       Px.rect(ctx, 5, 177, bw - 2, 14, '#fff3b0');

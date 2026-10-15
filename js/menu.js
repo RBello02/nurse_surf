@@ -48,8 +48,8 @@ function MenuScene(app) {
     ctx.fillRect(px - 32, py - 2, 64, 5);
     Px.rect(ctx, px - 30, py - 3, 60, 4, PAL.gold);
     Px.rect(ctx, px - 30, py - 3, 60, 1.5, '#fff3b0');
-    const step = Math.floor(t * 6) % 2;
-    Hero.draw(ctx, outfit, step ? 'run1' : 'run0', px, py - 3 - (step ? 1 : 0), 3);
+    const rn = Hero.run(t, 10);
+    Hero.draw(ctx, outfit, rn.pose, px, py - 3 - rn.bob, 3);
     Px.text(ctx, CFG.OUTFIT_TITLES[outfit], px, 210, '#ffffff', 2, 'center', PAL.ink);
     const rec = Save.get().best;
     if (rec) { Px.text(ctx, 'RECORD', W - 6, 100, '#b7c6cc', 2, 'right', PAL.ink); Px.text(ctx, String(rec), W - 6, 112, PAL.gold, 3, 'right', PAL.ink); }

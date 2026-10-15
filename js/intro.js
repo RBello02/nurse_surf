@@ -110,7 +110,7 @@ function IntroScene(app, params) {
   }
 
   function marinaPose() {
-    if (t < T_EXT) return { x: Px.lerp(-34, 62, Px.ease(Px.clamp(t / T_EXT, 0, 1))), pose: (Math.floor(t * 6) % 2) ? 'run1' : 'run0', dy: 0 };
+    if (t < T_EXT) return { x: Px.lerp(-34, 62, Px.ease(Px.clamp(t / T_EXT, 0, 1))), pose: Hero.run(t, 10).pose, dy: Hero.run(t, 10).bob };
     if (t < T_RUN) {
       let x = 62, dy = 0, pose = 'stand';
       if (t > T_FIRST && t < T_NURSE && Math.floor(t * 3) % 2) dy = 1;
@@ -118,7 +118,7 @@ function IntroScene(app, params) {
       return { x, pose, dy };
     }
     const p = Px.clamp((t - T_RUN) / 1.0, 0, 1);
-    return { x: Px.lerp(62, -50, p * p), pose: (Math.floor(t * 12) % 2) ? 'run1' : 'run0', dy: 0 };
+    return { x: Px.lerp(62, -50, p * p), pose: Hero.run(t, 14).pose, dy: Hero.run(t, 14).bob };
   }
 
   function nurseX() {
@@ -137,7 +137,11 @@ function IntroScene(app, params) {
     const m = marinaPose();
     ctx.fillStyle = 'rgba(16,21,31,0.25)';
     ctx.fillRect(m.x - 18, FEET - 2, 36, 4);
-    Hero.draw(ctx, outfit, m.pose, m.x, FEET - m.dy, 2);
+    const talkM = beatReady() && idx >= 0 && idx < SCRIPT.length && SCRIPT[idx].who === 'm' && t < T_RUN;
+    const idleM = m.pose === 'stand' ? (talkM ? Math.abs(Math.sin(t * 9)) * 1.6 : Math.sin(t * 2.5) * 0.5) : 0;
+    ctx.save(); ctx.translate(m.x, FEET - m.dy - idleM); ctx.rotate(m.pose === 'stand' && talkM ? Math.sin(t * 6) * 0.03 : 0);
+    Hero.draw(ctx, outfit, m.pose, 0, 0, 2);
+    ctx.restore();
 
     // infermiera con la siringa gigante
     const nx = nurseX();
@@ -145,7 +149,11 @@ function IntroScene(app, params) {
       const moving = t < T_NURSE + 0.8 || t > T_RUN + 0.3;
       const bounce = moving ? Math.abs(Math.sin(t * 14)) * 3 : Math.sin(t * 5) * 0.8;
       ctx.fillStyle = 'rgba(16,21,31,0.25)'; ctx.fillRect(nx - 30, FEET - 2, 60, 4);
-      Chaser.draw(ctx, nx, FEET + 4 - bounce, 1, moving ? (Math.floor(t * 10) % 2) : 0, 'front');
+      const talkN = beatReady() && idx >= 0 && idx < SCRIPT.length && SCRIPT[idx].who === 'n' && t < T_RUN;
+      ctx.save(); ctx.translate(nx, FEET + 4 - bounce - (talkN ? Math.abs(Math.sin(t * 8)) * 2 : 0));
+      ctx.rotate(moving ? Math.sin(t * 12) * 0.03 : Math.sin(t * (talkN ? 7 : 2.5)) * (talkN ? 0.045 : 0.02));
+      Chaser.draw(ctx, 0, 0, 1, Math.floor(t * (moving ? 12 : 4)), 'front');
+      ctx.restore();
       // luccichio sull'ago
       if (t > T_N1 && t < T_RUN && Math.floor(t * 3) % 2 === 0) star(ctx, nx - 54.5 + 93.5, FEET + 4 - 96 + 7, 4, '#ffffff');
     }

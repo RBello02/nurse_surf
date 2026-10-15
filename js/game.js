@@ -219,7 +219,7 @@ function GameScene(app, outfit) {
     }
     // Martina
     let hx = World.laneXf(g.laneF, 1), feet = PY, k = HK, pose = 'stand', alpha = 1;
-    const runPose = (Math.floor(g.frameT * 9) % 2) ? 'run1' : 'run0';
+    const runPose = Hero.run(g.frameT, 12).pose;
     if (d.state === 'arrive') pose = runPose;
     if (d.state === 'ask') { hx = 90; pose = 'stand'; }
     if (d.state === 'anim') {
@@ -257,7 +257,7 @@ function GameScene(app, outfit) {
       ctx.save();
       ctx.translate(nx, feet + 4 - bounce);
       ctx.rotate(d.dir > 0 ? -th : th);
-      Px.blit(ctx, Chaser.get(moving ? (Math.floor(d.t * 10) % 2) : 0, 'front', d.dir > 0), 0, 0, NURSE_K);
+      Px.blit(ctx, Chaser.get(Math.floor(d.t * (moving ? 12 : 5)), 'front', d.dir > 0), 0, 0, NURSE_K);
       ctx.restore();
       if (d.t > 1.5 && d.t < 2.4) Px.text(ctx, '!', hx, feet - 62 + Math.sin(d.t * 16) * 1.2, PAL.red, 6, 'center', '#ffffff');
       if (d.stabbed) {
@@ -371,7 +371,8 @@ function GameScene(app, outfit) {
     st.T += g.speed * (1 - 0.45 * (g.stumble / 0.8)) * dt;
 
     g.laneF += Math.sign(g.lane - g.laneF) * Math.min(Math.abs(g.lane - g.laneF), dt / CFG.LANE_SWITCH_TIME);
-    if (g.jumpT > 0) g.jumpT = Math.max(0, g.jumpT - dt);
+    if (g.landT > 0) g.landT = Math.max(0, g.landT - dt);
+    if (g.jumpT > 0) { g.jumpT = Math.max(0, g.jumpT - dt); if (g.jumpT === 0) { g.landT = 0.14; fx.burst(World.laneXf(g.laneF, 1), PY, ['#ffffff', '#d3dfe3'], 6, 26, 0.3, 0); } }
     if (g.slideT > 0) g.slideT = Math.max(0, g.slideT - dt);
 
     g.chaserLane += (g.laneF - g.chaserLane) * Math.min(1, dt * 4);
@@ -485,21 +486,35 @@ function GameScene(app, outfit) {
     if (g.phase === 'caught' || g.phase === 'over') pose = 'stand';
     else if (g.slideT > 0) pose = 'slide';
     else if (jh > 0.5) pose = 'jump';
-    else pose = (Math.floor(g.frameT * 9) % 2) ? 'run1' : 'run0';
+    else pose = Hero.run(g.frameT, 12).pose;
     ctx.fillStyle = 'rgba(16,21,31,0.28)';
     const sw = Math.max(10, 26 - jh * 0.3);
     ctx.fillRect(x - sw / 2, PY - 1, sw, 2.5);
     if (g.invul > 0 && Math.floor(g.invul * 14) % 2 === 0) return;
-    const bob = (pose === 'run0' || pose === 'run1') && Math.floor(g.frameT * 9) % 2 ? 0.8 : 0;
-    Hero.draw(ctx, outfit, pose, x, PY - jh + bob + 1, HK);
+    const bob = pose.startsWith('run') ? Hero.run(g.frameT, 12).bob : 0;
+    // movimento extra: inclinazione quando cambia corsia, allungamento al salto, schiacciamento all'atterraggio
+    const lean = Px.clamp((g.lane - g.laneF) * 0.3, -0.25, 0.25) + (pose.startsWith('run') ? 0.05 : 0);
+    let sx = 1, sy = 1;
+    if (g.jumpT > 0) { const p = 1 - g.jumpT / CFG.JUMP_TIME; sy = 1 + 0.1 * Math.max(0, 1 - p * 5); sx = 2 - sy; }
+    else if (g.landT > 0) { const q = g.landT / 0.14; sy = 1 - 0.13 * q; sx = 1 + 0.12 * q; }
+    ctx.save();
+    ctx.translate(x, PY - jh + bob + 1);
+    ctx.rotate(lean);
+    ctx.scale(sx, sy);
+    Hero.draw(ctx, outfit, pose, 0, 0, HK);
+    ctx.restore();
   }
 
   function drawChaser(ctx) {
     if (g.gapV >= 1.0) return;
-    const spr = Chaser.get(Math.floor(g.frameT * 6) % 2, 'back');
+    const spr = Chaser.get(Math.floor(g.frameT * 10), 'back');
     const cx = World.laneXf(g.chaserLane, 1);
     const bottom = H + 20 + g.gapV * 70 + Math.sin(g.frameT * 12) * 1.5;
-    Px.blit(ctx, spr, cx, bottom, 1);
+    ctx.save();                                           // l'infermiera ondeggia mentre corre
+    ctx.translate(cx + Math.sin(g.frameT * 5) * 3, bottom);
+    ctx.rotate(Math.sin(g.frameT * 6) * 0.05);
+    Px.blit(ctx, spr, 0, 0, 1);
+    ctx.restore();
     if (g.bubbleT > 0 && g.bubble) {
       const tw = Px.textWidth(g.bubble, 2) + 10;
       const bx = Px.clamp(cx, tw / 2 + 2, W - tw / 2 - 2) - tw / 2, by = H - 36;
