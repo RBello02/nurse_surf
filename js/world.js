@@ -9,8 +9,8 @@ const World = (() => {
   const SEG = 0.75;       // lunghezza dei segmenti di parete (porte, finestre, poster)
   const TILE = 0.3;       // lunghezza delle piastrelle del pavimento
   const LIGHT_P = 1.5;    // distanza fra le luci a soffitto
-  const STEP = 0.5;       // risoluzione del rendering (mezza unita' di progetto = 1 pixel reale)
-  const rq = (v) => Math.round(v / STEP) * STEP;
+  const STEP = 0.25;      // spessore minimo di una linea (unita')
+  const rq = (v) => v;    // il corridoio e' disegnato con poligoni in prospettiva: nessun arrotondamento a pixel
 
   const THEMES = {
     normal: {
@@ -54,104 +54,92 @@ const World = (() => {
 
   function theme(st, w) { return w >= st.specialStart ? THEMES.special : (w >= st.uniStart ? THEMES.uni : THEMES.normal); }
 
-  function vr(ctx, x, Y, v0, v1, color) {
-    const y1 = Y(v1), y0 = Y(v0);
+  // ---------- geometria in prospettiva (poligoni nitidi a qualsiasi risoluzione) ----------
+  // Un punto del corridoio e' (lato, profondita' di mondo w, altezza v 0..1 sulla parete). Con s = proj(w - T):
+  //   x = CX + lato * WALL * s,   y = HZ + s * (K1 - K2 * v)      (lineare in s: i bordi restano rettilinei)
+  const K1 = PY - HZ, K2 = PY - HZ + CEIL;
+  let _T = 0, _w0 = 0, _w1 = 1, _st = null;
+  const S_OF = (w) => proj(w - _T);
+
+  function poly(ctx, pts, color) {
     ctx.fillStyle = color;
-    ctx.fillRect(x, y1, STEP, Math.max(STEP, y0 - y1));
+    ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+    ctx.closePath(); ctx.fill();
+  }
+  // porzione di parete: lato -1 (sinistra) / +1 (destra), tra le profondita' wa..wb e le altezze va..vb
+  function wq(ctx, side, wa, wb, va, vb, color) {
+    wa = Math.max(wa, _w0); wb = Math.min(wb, _w1);
+    if (wb <= wa) return;
+    const s0 = S_OF(wa), s1 = S_OF(wb), X = (s) => CX + side * WALL * s, Y = (s, v) => HZ + s * (K1 - K2 * v);
+    poly(ctx, [X(s0), Y(s0, va), X(s1), Y(s1, va), X(s1), Y(s1, vb), X(s0), Y(s0, vb)], color);
+  }
+  // porzione di pavimento (y = floor) o soffitto, tra le profondita' wa..wb e le posizioni laterali xa..xb (unita' a scala 1)
+  function fq(ctx, ceil, wa, wb, xa, xb, color) {
+    wa = Math.max(wa, _w0); wb = Math.min(wb, _w1);
+    if (wb <= wa) return;
+    const s0 = S_OF(wa), s1 = S_OF(wb), Y = (s) => ceil ? HZ - CEIL * s : HZ + K1 * s;
+    poly(ctx, [CX + xa * s0, Y(s0), CX + xb * s0, Y(s0), CX + xb * s1, Y(s1), CX + xa * s1, Y(s1)], color);
+  }
+  function themeAt(st, w) { return theme(st, w); }
+  // suddivide [wa, wb] ai confini fra ambienti (ospedale / universita' / finale)
+  function spans(st, wa, wb, fn) {
+    const cuts = [wa];
+    for (const c of [st.uniStart, st.specialStart]) if (isFinite(c) && c > wa && c < wb) cuts.push(c);
+    cuts.sort((p, q) => p - q); cuts.push(wb);
+    for (let i = 0; i + 1 < cuts.length; i++) fn(cuts[i], cuts[i + 1], themeAt(st, (cuts[i] + cuts[i + 1]) / 2));
+  }
+  // ripete un motivo periodico (periodo per, parte attiva [0, on)) nell'intervallo corrente
+  function periodic(per, on, fn) {
+    for (let k = Math.floor(_w0 / per); k * per < _w1; k++) fn(k * per, k * per + on * per, k);
   }
 
-  function wallColumn(ctx, st, x) {
-    const xc = x + STEP / 2;
-    const left = xc < CX;
-    const s = Math.abs(xc - CX) / WALL;
-    const sEnd = st._sEnd;
-    if (s < sEnd) return;
-    const w = zOf(s) + st.T;
-    const th = theme(st, w);
-    const yF = scrY(s), yC = HZ - CEIL * s, h = yF - yC;
-    const Y = (v) => rq(yF - h * v);
-
-    vr(ctx, x, Y, 0, 1, th.wallTop);
-    vr(ctx, x, Y, 0.04, 0.42, th.wallBot);
-    vr(ctx, x, Y, 0.42, 0.47, left ? th.stripeL : th.stripeR);
-    vr(ctx, x, Y, 0, 0.04, th.skirt);
-
-    const seg = Math.floor(w / SEG);
-    const u = w / SEG - seg;
-    if (th.special) {
-      // pilastri dorati con bandiere
-      if (u > 0.38 && u < 0.62) {
-        vr(ctx, x, Y, 0.04, 0.78, PAL.goldDark);
-        if (u > 0.42 && u < 0.58) vr(ctx, x, Y, 0.06, 0.76, PAL.gold);
-        vr(ctx, x, Y, 0.5, 0.7, (seg % 2) ? PAL.red : PAL.blue);
-      }
-      return;
-    }
-    const kind = Px.hash(seg * 2 + (left ? 0 : 1) + 7);
-    if (th.uni) {
-      if (kind < 0.35) {
-        // porta di un'aula in legno con targa blu
-        if (u > 0.2 && u < 0.8) {
-          const edge = u < 0.24 || u > 0.76;
-          vr(ctx, x, Y, 0.04, 0.64, edge ? th.doorDark : th.door);
-          if (!edge && u > 0.34 && u < 0.66) vr(ctx, x, Y, 0.4, 0.56, th.glass);
-          if (!edge && u > 0.68 && u < 0.72) vr(ctx, x, Y, 0.22, 0.28, PAL.gold);
+  function drawWalls(ctx, st) {
+    for (const side of [-1, 1]) {
+      const left = side < 0;
+      spans(st, _w0, _w1, (a, b, th) => {
+        wq(ctx, side, a, b, 0, 1, th.wallTop);
+        wq(ctx, side, a, b, 0.04, 0.42, th.wallBot);
+        wq(ctx, side, a, b, 0.42, 0.47, left ? th.stripeL : th.stripeR);
+        wq(ctx, side, a, b, 0, 0.04, th.skirt);
+      });
+      for (let seg = Math.floor(_w0 / SEG); seg * SEG < _w1; seg++) {
+        const wA = seg * SEG, th = themeAt(st, wA + SEG / 2);
+        const D = (u0, u1, v0, v1, col) => wq(ctx, side, wA + u0 * SEG, wA + u1 * SEG, v0, v1, col);
+        if (th.special) {                                     // pilastri dorati con bandiere
+          D(0.38, 0.62, 0.04, 0.78, PAL.goldDark); D(0.42, 0.58, 0.06, 0.76, PAL.gold); D(0.42, 0.58, 0.5, 0.7, (seg % 2) ? PAL.red : PAL.blue);
+          continue;
         }
-        if (u > 0.36 && u < 0.64) vr(ctx, x, Y, 0.68, 0.75, '#1f3a7a');
-      } else if (kind < 0.6) {
-        // finestra alta
-        if (u > 0.2 && u < 0.8) {
-          const frame = u < 0.24 || u > 0.76 || (u > 0.48 && u < 0.52);
-          vr(ctx, x, Y, 0.2, 0.8, th.frame);
-          if (!frame) { vr(ctx, x, Y, 0.24, 0.76, th.glass); if (u > 0.58 && u < 0.7) vr(ctx, x, Y, 0.5, 0.66, '#eaf6fc'); }
+        const kind = Px.hash(seg * 2 + (left ? 0 : 1) + 7);
+        if (th.uni) {
+          if (kind < 0.35) {                                  // porta di un'aula in legno con targa blu
+            D(0.2, 0.8, 0.04, 0.64, th.door); D(0.2, 0.24, 0.04, 0.64, th.doorDark); D(0.76, 0.8, 0.04, 0.64, th.doorDark);
+            D(0.34, 0.66, 0.4, 0.56, th.glass); D(0.68, 0.72, 0.22, 0.28, PAL.gold); D(0.36, 0.64, 0.68, 0.75, '#1f3a7a');
+          } else if (kind < 0.6) {                            // finestra alta
+            D(0.2, 0.8, 0.2, 0.8, th.frame); D(0.24, 0.48, 0.24, 0.76, th.glass); D(0.52, 0.76, 0.24, 0.76, th.glass); D(0.58, 0.7, 0.5, 0.66, '#eaf6fc');
+          } else if (kind < 0.8) {                            // bacheca di sughero con avvisi
+            D(0.22, 0.78, 0.3, 0.66, '#7a4d27'); D(0.24, 0.76, 0.32, 0.64, '#c98f55');
+            for (let n = 2; n < 7; n += 2) D(n / 9, (n + 1) / 9, 0.38 + (n % 3) * 0.06, 0.54 + (n % 3) * 0.04, POSTER_COLORS[(seg + n) % POSTER_COLORS.length]);
+          } else {                                            // libreria con libri colorati
+            D(0.18, 0.82, 0.04, 0.78, '#5f3b1a');
+            const cols = ['#3e7bd6', '#e0344b', '#3bb273', '#f6c344', '#8e5bd1', '#ffffff'];
+            for (let b = 6; b < 23; b++) for (const [va, vb] of [[0.08, 0.26], [0.3, 0.48], [0.52, 0.7]]) D(b / 28, (b + 1) / 28, va, vb, cols[(b + Math.floor(va * 10) + seg) % cols.length]);
+          }
+          continue;
         }
-      } else if (kind < 0.8) {
-        // bacheca di sughero con avvisi
-        if (u > 0.22 && u < 0.78) {
-          vr(ctx, x, Y, 0.3, 0.66, '#7a4d27');
-          vr(ctx, x, Y, 0.32, 0.64, '#c98f55');
-          const n = Math.floor(u * 9);
-          if (n % 2 === 0) vr(ctx, x, Y, 0.38 + (n % 3) * 0.06, 0.54 + (n % 3) * 0.04, POSTER_COLORS[(seg + n) % POSTER_COLORS.length]);
+        if (kind < 0.45) {                                    // porta di reparto
+          D(0.2, 0.8, 0.04, 0.62, th.door); D(0.2, 0.24, 0.04, 0.62, th.doorDark); D(0.76, 0.8, 0.04, 0.62, th.doorDark);
+          D(0.32, 0.68, 0.36, 0.54, th.glass); D(0.7, 0.74, 0.22, 0.28, PAL.metal); D(0.38, 0.62, 0.66, 0.74, kind < 0.22 ? PAL.blue : PAL.green);
+        } else if (kind < 0.7) {                              // finestra
+          D(0.15, 0.85, 0.26, 0.74, th.frame); D(0.19, 0.48, 0.3, 0.7, th.glass); D(0.52, 0.81, 0.3, 0.7, th.glass); D(0.55, 0.7, 0.5, 0.64, '#c8ecf8');
+        } else if (kind < 0.88) {                             // poster / bacheca
+          const col = POSTER_COLORS[Math.floor(Px.hash(seg * 5 + 3) * POSTER_COLORS.length)];
+          D(0.3, 0.7, 0.3, 0.62, '#ffffff'); D(0.3, 0.7, 0.34, 0.58, col); D(0.4, 0.6, 0.42, 0.5, '#ffffff');
         }
-      } else {
-        // libreria con libri colorati
-        if (u > 0.18 && u < 0.82) {
-          vr(ctx, x, Y, 0.04, 0.78, '#5f3b1a');
-          const cols = ['#3e7bd6', '#e0344b', '#3bb273', '#f6c344', '#8e5bd1', '#ffffff'];
-          const b = Math.floor(u * 28);
-          for (const [a, c2] of [[0.08, 0.26], [0.3, 0.48], [0.52, 0.7]]) vr(ctx, x, Y, a, c2, cols[(b + Math.floor(a * 10) + seg) % cols.length]);
-        }
-      }
-      return;
-    }
-    if (kind < 0.45) {
-      // porta di reparto
-      if (u > 0.2 && u < 0.8) {
-        const edge = u < 0.24 || u > 0.76;
-        vr(ctx, x, Y, 0.04, 0.62, edge ? th.doorDark : th.door);
-        if (!edge && u > 0.32 && u < 0.68) vr(ctx, x, Y, 0.36, 0.54, th.glass);
-        if (!edge && u > 0.7 && u < 0.74) vr(ctx, x, Y, 0.22, 0.28, PAL.metal);
-      }
-      if (u > 0.38 && u < 0.62) vr(ctx, x, Y, 0.66, 0.74, kind < 0.22 ? PAL.blue : PAL.green);
-    } else if (kind < 0.7) {
-      // finestra
-      if (u > 0.15 && u < 0.85) {
-        const frame = u < 0.19 || u > 0.81 || (u > 0.48 && u < 0.52);
-        vr(ctx, x, Y, 0.26, 0.74, th.frame);
-        if (!frame) vr(ctx, x, Y, 0.3, 0.7, th.glass);
-        if (!frame && u > 0.55 && u < 0.7) vr(ctx, x, Y, 0.5, 0.64, '#c8ecf8');
-      }
-    } else if (kind < 0.88) {
-      // poster / bacheca
-      if (u > 0.3 && u < 0.7) {
-        const col = POSTER_COLORS[Math.floor(Px.hash(seg * 5 + 3) * POSTER_COLORS.length)];
-        vr(ctx, x, Y, 0.3, 0.62, '#ffffff');
-        vr(ctx, x, Y, 0.34, 0.58, col);
-        if (u > 0.4 && u < 0.6) vr(ctx, x, Y, 0.42, 0.5, '#ffffff');
+        // corrimano lungo la parete
+        D(0, 1, 0.27, 0.31, '#b4c0c8'); D(0, 1, 0.3, 0.31, '#e8eef1'); D(0, 1, 0.27, 0.275, '#8493a0');
       }
     }
-    // corrimano lungo la parete
-    vr(ctx, x, Y, 0.27, 0.31, '#b4c0c8'); vr(ctx, x, Y, 0.3, 0.31, '#e8eef1'); vr(ctx, x, Y, 0.27, 0.275, '#8493a0');
   }
 
   function drawEndFace(ctx, st) {
@@ -205,54 +193,31 @@ const World = (() => {
     const T = st.T;
     st._sEnd = st.endW != null ? Math.max(S_MIN, proj(Math.max(0, st.endW - T))) : S_MIN;
     const sEnd = st._sEnd;
+    _T = T; _st = st; _w0 = T - 0.14; _w1 = T + zOf(sEnd);
     ctx.fillStyle = '#1b2a41';
     ctx.fillRect(0, 0, W, H);
 
     drawEndFace(ctx, st);
 
     // soffitto
-    const yCeilEnd = Math.floor(HZ - CEIL * sEnd);
-    for (let y = 0; y <= yCeilEnd; y += STEP) {
-      const s = (HZ - y - STEP / 2) / CEIL;
-      if (s < sEnd || s <= 0) continue;
-      const w = zOf(s) + T;
-      const th = theme(st, w);
-      const half = WALL * s;
-      const x0 = Math.max(0, rq(CX - half)), x1 = Math.min(W, rq(CX + half));
-      ctx.fillStyle = (Math.floor(w / TILE) & 1) ? th.ceilA : th.ceilB;
-      ctx.fillRect(x0, y, x1 - x0, STEP);
-      if ((w / LIGHT_P) % 1 < 0.35) {
-        const lh = 26 * s;
-        ctx.fillStyle = th.light;
-        ctx.fillRect(rq(CX - lh), y, Math.max(STEP, rq(2 * lh)), STEP);
-      }
-    }
+    spans(st, _w0, _w1, (a, b, th) => fq(ctx, true, a, b, -WALL, WALL, th.ceilB));
+    periodic(TILE, 1, (a, b, k) => { if (k & 1) spans(st, a, b, (c, d, th) => fq(ctx, true, c, d, -WALL, WALL, th.ceilA)); });
+    periodic(LIGHT_P, 0.35, (a, b) => spans(st, a, b, (c, d, th) => {
+      fq(ctx, true, c, d, -34, 34, th.light + '55'); fq(ctx, true, c, d, -26, 26, th.light);
+    }));
 
-    // pareti
-    for (let x = 0; x < W; x += STEP) wallColumn(ctx, st, x);
+    drawWalls(ctx, st);
 
     // pavimento
-    const yFloorEnd = rq(Math.ceil(scrY(sEnd)));
-    for (let y = yFloorEnd; y < H; y += STEP) {
-      const s = (y + STEP / 2 - HZ) / (PY - HZ);
-      if (s < sEnd) continue;
-      const w = zOf(s) + T;
-      const th = theme(st, w);
-      const half = WALL * s;
-      const x0 = Math.max(0, rq(CX - half)), x1 = Math.min(W, rq(CX + half));
-      const lit = (w / LIGHT_P) % 1 < 0.35;
-      ctx.fillStyle = lit ? th.floorHi : ((Math.floor(w / TILE) & 1) ? th.floorA : th.floorB);
-      ctx.fillRect(x0, y, x1 - x0, STEP);
-      const ew = Math.max(STEP, rq(5 * s));
-      ctx.fillStyle = th.line;
-      ctx.fillRect(x0, y, ew, STEP);
-      ctx.fillRect(x1 - ew, y, ew, STEP);
-      if ((w / 0.5) % 1 < 0.6) {
-        const dx = 28 * s, lw = Math.max(STEP, rq(1.2 * s));
-        ctx.fillRect(rq(CX - dx), y, lw, STEP);
-        ctx.fillRect(rq(CX + dx), y, lw, STEP);
-      }
-    }
+    spans(st, _w0, _w1, (a, b, th) => fq(ctx, false, a, b, -WALL, WALL, th.floorB));
+    periodic(TILE, 1, (a, b, k) => { if (k & 1) spans(st, a, b, (c, d, th) => fq(ctx, false, c, d, -WALL, WALL, th.floorA)); });
+    periodic(LIGHT_P, 0.35, (a, b) => spans(st, a, b, (c, d, th) => fq(ctx, false, c, d, -WALL, WALL, th.floorHi)));
+    spans(st, _w0, _w1, (a, b, th) => {
+      fq(ctx, false, a, b, -WALL, -WALL + 5, th.line); fq(ctx, false, a, b, WALL - 5, WALL, th.line);
+    });
+    periodic(0.5, 0.6, (a, b) => spans(st, a, b, (c, d, th) => {
+      fq(ctx, false, c, d, -28.6, -27.4, th.line); fq(ctx, false, c, d, 27.4, 28.6, th.line);
+    }));
   }
 
   // Arco d'ingresso del corridoio speciale (billboard a z fissato nel mondo)

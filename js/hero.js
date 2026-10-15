@@ -137,47 +137,45 @@ const Hero = (() => {
   }
 
   function head(ctx, withWreath) {
-    // chignon / capelli raccolti dietro la testa, ciocche ondulate che incorniciano il viso
-    Px.ell(ctx, 22, 16, 13, 13, H.hair);
-    Px.ell(ctx, 22, 4, 7, 5, H.hair);                       // chignon alto
-    ctx.fillStyle = HAIR_HI; ctx.fillRect(19, 2, 4, 1);
-    ctx.fillStyle = H.hair; ctx.fillRect(10, 18, 5, 14); ctx.fillRect(30, 18, 5, 14);   // ciocche ai lati del viso
-    ctx.fillStyle = H.hairShade; ctx.fillRect(10, 28, 5, 4); ctx.fillRect(30, 28, 5, 4);
-    ctx.fillStyle = H.hair; ctx.fillRect(11, 32, 3, 2); ctx.fillRect(31, 32, 3, 2);
-    ctx.fillStyle = HAIR_HI; ctx.fillRect(12, 20, 1, 8); ctx.fillRect(32, 20, 1, 8);
-    // viso
-    Px.ell(ctx, 22, 20, 9, 10, H.skin);
-    ctx.fillStyle = H.skinShade; ctx.fillRect(16, 28, 12, 1);
-    Px.ell(ctx, 22, 31, 3, 3, H.skinShade);               // collo
-    // cappello di capelli e frangia
-    Px.ell(ctx, 22, 13, 11, 8, H.hair);
-    for (let x = 12; x <= 32; x++) {
-      const len = 5 + ((x * 7) % 4);
-      ctx.fillStyle = (x % 3 === 0) ? HAIR_HI : H.hair;
-      ctx.fillRect(x, 10, 1, len + 1);
-      if (x % 4 === 1) { ctx.fillStyle = H.hairShade; ctx.fillRect(x, 10 + len, 1, 1); }
-    }
-    ctx.fillStyle = HAIR_HI; ctx.fillRect(15, 7, 7, 1); ctx.fillRect(19, 6, 5, 1);
-    // frangia laterale: piu' lunga a sinistra, spostata di lato
-    for (let i = 0; i < 6; i++) { ctx.fillStyle = H.hair; ctx.fillRect(12 + i, 15 + i, 1, 2); }
-    ctx.fillStyle = H.hair; ctx.fillRect(12, 14, 6, 3);
+    const g = ctx;
+    const path = (fn, fill, stroke, lw) => { g.beginPath(); fn(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 1; g.lineJoin = 'round'; g.lineCap = 'round'; g.stroke(); } };
+    // capelli raccolti dietro la testa, chignon alto, ciocche che incorniciano il viso
+    Px.ell(g, 22, 16, 13, 13.5, H.hair);
+    Px.ell(g, 22, 4.5, 7, 5.5, H.hair);
+    Px.ell(g, 20, 3.5, 3.5, 1.6, HAIR_HI);
+    path(() => { g.moveTo(10.5, 17); g.quadraticCurveTo(8.5, 28, 11.5, 35); g.quadraticCurveTo(14, 33, 15, 24); g.lineTo(15, 17); g.closePath(); }, H.hair);
+    path(() => { g.moveTo(33.5, 17); g.quadraticCurveTo(35.5, 28, 32.5, 35); g.quadraticCurveTo(30, 33, 29, 24); g.lineTo(29, 17); g.closePath(); }, H.hair);
+    path(() => { g.moveTo(11.6, 24); g.quadraticCurveTo(10.8, 30, 12.2, 34); }, null, H.hairShade, 1.2);
+    path(() => { g.moveTo(32.4, 24); g.quadraticCurveTo(33.2, 30, 31.8, 34); }, null, H.hairShade, 1.2);
+    path(() => { g.moveTo(13, 21); g.quadraticCurveTo(12.3, 26, 13, 30); }, null, HAIR_HI, 0.7);
+    // collo e viso
+    Px.ell(g, 22, 31, 3.2, 3.2, H.skinShade);
+    Px.ell(g, 22, 20.5, 9, 10.2, H.skin);
+    Px.ell(g, 26.5, 23, 3.6, 7, H.skinShade); Px.ell(g, 22, 20.2, 8.4, 10, H.skin); Px.ell(g, 22, 18.5, 7, 7.5, '#f7d9bd');   // luce e ombra sul volto
+    Px.ell(g, 22, 18.6, 6.6, 7.0, H.skin);
+    // frangia laterale morbida, piu' lunga a sinistra
+    Px.ell(g, 22, 12.5, 11.5, 7.5, H.hair);
+    path(() => { g.moveTo(10.6, 12); g.lineTo(33.4, 12); g.lineTo(33.4, 16.5); g.quadraticCurveTo(27, 15.2, 21.5, 18.6); g.quadraticCurveTo(15.5, 22.2, 11.2, 22.6); g.closePath(); }, H.hair);
+    path(() => { g.moveTo(13, 14); g.quadraticCurveTo(18, 14.5, 22, 17.5); }, null, HAIR_HI, 0.8);
+    path(() => { g.moveTo(24, 9); g.quadraticCurveTo(29, 10, 31.5, 13.5); }, null, HAIR_HI, 0.8);
+    path(() => { g.moveTo(14.5, 18.5); g.quadraticCurveTo(17, 20.3, 19.5, 19.8); }, null, H.hairShade, 0.8);
     // orecchini d'argento
-    ctx.fillStyle = '#e4e8ec'; ctx.fillRect(13, 27, 2, 2); ctx.fillRect(30, 27, 2, 2);
-    // sopracciglia
-    ctx.fillStyle = '#4a2f20'; ctx.fillRect(15, 18, 5, 1); ctx.fillRect(25, 18, 5, 1);
-    // occhi castani
-    for (const ex of [16, 26]) {
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(ex, 20, 5, 5);
-      ctx.fillStyle = H.eyes;   ctx.fillRect(ex + 1, 20, 3, 5);
-      ctx.fillStyle = '#3a2210'; ctx.fillRect(ex + 1, 22, 3, 2);
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(ex + 1, 20, 1, 1);
-      ctx.fillStyle = '#3a2210'; ctx.fillRect(ex, 19, 5, 1);   // ciglia
+    Px.ell(g, 13.4, 28.3, 1, 1.4, '#eef2f5'); Px.ell(g, 30.6, 28.3, 1, 1.4, '#eef2f5');
+    // occhi castani, ciglia, sopracciglia
+    for (const [cx, side] of [[17.4, -1], [26.6, 1]]) {
+      Px.ell(g, cx, 22.4, 2.7, 2.5, '#ffffff');
+      Px.ell(g, cx, 22.6, 2.0, 2.3, H.eyes);
+      Px.ell(g, cx, 22.8, 1.1, 1.4, '#1a0f08');
+      Px.ell(g, cx - 0.7, 21.7, 0.7, 0.7, '#ffffff');
+      path(() => { g.moveTo(cx - 2.9, 21.6); g.quadraticCurveTo(cx, 19.6, cx + 2.9, 21.6); }, null, '#2a1810', 0.9);
+      path(() => { g.moveTo(cx + side * 2.8, 21.4); g.lineTo(cx + side * 3.8, 20.4); }, null, '#2a1810', 0.8);
     }
-    // naso, guance, bocca
-    ctx.fillStyle = H.skinShade; ctx.fillRect(22, 25, 1, 2);
-    Px.ell(ctx, 16, 27, 2, 1, '#f1a58e'); Px.ell(ctx, 29, 27, 2, 1, '#f1a58e');
-    ctx.fillStyle = '#c4605a'; ctx.fillRect(19, 29, 1, 1); ctx.fillRect(20, 30, 5, 1); ctx.fillRect(25, 29, 1, 1);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(21, 30, 3, 1);
+    path(() => { g.moveTo(14.2, 18.4); g.quadraticCurveTo(17, 16.3, 20.4, 17.6); }, null, '#3b2417', 1.0);
+    path(() => { g.moveTo(23.6, 17.6); g.quadraticCurveTo(27, 16.3, 29.8, 18.4); }, null, '#3b2417', 1.0);
+    // naso, guance, bocca sorridente
+    path(() => { g.moveTo(22.3, 22.5); g.quadraticCurveTo(21.6, 25, 22.8, 25.6); }, null, H.skinShade, 0.7);
+    Px.ell(g, 16.2, 26.6, 2.3, 1.3, 'rgba(241,140,130,0.55)'); Px.ell(g, 28.2, 26.6, 2.3, 1.3, 'rgba(241,140,130,0.55)');
+    path(() => { g.moveTo(18.8, 28.8); g.quadraticCurveTo(22.2, 31.6, 25.8, 28.8); g.quadraticCurveTo(22.2, 29.8, 18.8, 28.8); }, '#ffffff', '#b4504f', 0.8);
     if (withWreath) wreath(ctx);
   }
 
@@ -219,7 +217,7 @@ const Hero = (() => {
     const c = Px.make(slide ? 60 : 44, slide ? 52 : 80, (ctx) => {
       if (slide) drawSlide(ctx, outfit, withWreath);
       else drawStanding(ctx, outfit, pose, withWreath);
-    });
+    }, false, 3);
     cache[key] = Px.outlined(c);
     return cache[key];
   }
@@ -359,24 +357,28 @@ const Chaser = (() => {
         Px.ell(c, cx, hy + 6, 19, 22, SKIN);                                   // viso
         Px.ell(c, cx + 11, hy + 12, 7, 14, '#e9b995');                         // ombra lato destro
         Px.ell(c, cx, hy + 6, 17, 21, SKIN);
+        Px.ell(c, cx - 3, hy + 2, 11, 12, '#f7d9bd'); Px.ell(c, cx - 2, hy + 3, 10, 11, SKIN);
         Px.ell(c, cx, hy + 26, 9, 3, '#e6b793');                               // sotto il mento
-        Px.ell(c, cx - 12, hy + 15, 5, 3, '#f1958a'); Px.ell(c, cx + 12, hy + 15, 5, 3, '#f1958a');   // guance
-        for (const ex of [-10, 3]) {                                           // occhi grandi con ciglia
-          c.fillStyle = '#ffffff'; c.fillRect(cx + ex, hy + 1, 9, 8);
-          c.fillStyle = '#3f7f5a'; c.fillRect(cx + ex + 2, hy + 1, 6, 8);
-          c.fillStyle = '#0d1a14'; c.fillRect(cx + ex + 4, hy + 3, 3, 5);
-          c.fillStyle = '#ffffff'; c.fillRect(cx + ex + 2, hy + 2, 2, 2);
-          c.fillStyle = PAL.ink; c.fillRect(cx + ex - 1, hy, 11, 2);
-          c.fillRect(cx + ex - 2, hy - 1, 1, 2); c.fillRect(cx + ex + 10, hy - 1, 1, 2); c.fillRect(cx + ex + 10, hy + 1, 1, 2);
-          c.fillStyle = '#d6a085'; c.fillRect(cx + ex, hy + 9, 9, 1);
+        Px.ell(c, cx - 12, hy + 15, 5, 3, 'rgba(241,120,125,0.6)'); Px.ell(c, cx + 12, hy + 15, 5, 3, 'rgba(241,120,125,0.6)');   // guance
+        for (const [ex, sd] of [[-6, -1], [8, 1]]) {                           // occhi grandi con ciglia
+          const x0 = cx + ex, y0 = hy + 5;
+          Px.ell(c, x0, y0, 5, 4.4, '#ffffff');
+          Px.ell(c, x0, y0 + 0.3, 3.5, 4, '#3f7f5a');
+          Px.ell(c, x0, y0 + 0.5, 1.9, 2.6, '#0d1a14');
+          Px.ell(c, x0 - 1.3, y0 - 1.3, 1.2, 1.2, '#ffffff');
+          c.strokeStyle = PAL.ink; c.lineCap = 'round'; c.lineWidth = 1.7;
+          c.beginPath(); c.moveTo(x0 - 5.4, y0 - 1.6); c.quadraticCurveTo(x0, y0 - 5.6, x0 + 5.4, y0 - 1.6); c.stroke();
+          c.lineWidth = 1.1; c.beginPath(); c.moveTo(x0 + sd * 5, y0 - 2.4); c.lineTo(x0 + sd * 7.4, y0 - 4.4); c.stroke();
         }
-        Px.line(c, cx - 12, hy - 2, cx - 3, hy - 5, 2, '#3a2418');                  // sopracciglia arcuate, furbette
-        Px.line(c, cx + 12, hy - 2, cx + 3, hy - 5, 2, '#3a2418');
-        c.fillStyle = '#e0a98a'; c.fillRect(cx - 1, hy + 10, 2, 4); c.fillStyle = '#f8dcc2'; c.fillRect(cx - 1, hy + 10, 1, 2);   // naso
-        c.fillStyle = '#b9323f'; c.fillRect(cx - 8, hy + 17, 16, 2); c.fillRect(cx - 9, hy + 16, 2, 2); c.fillRect(cx + 7, hy + 16, 2, 2);  // labbra rosse
-        c.fillStyle = '#ffffff'; c.fillRect(cx - 6, hy + 19, 12, 3);
-        c.fillStyle = '#e34a5e'; c.fillRect(cx - 6, hy + 22, 12, 2); c.fillStyle = '#b9323f'; c.fillRect(cx - 4, hy + 24, 8, 1);
-        c.fillStyle = PAL.gold; c.fillRect(cx - 21, hy + 14, 3, 4); c.fillRect(cx + 18, hy + 14, 3, 4);   // orecchini
+        c.strokeStyle = '#3a2418'; c.lineCap = 'round'; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(cx - 12, hy - 1); c.quadraticCurveTo(cx - 7, hy - 6, cx - 2, hy - 3); c.stroke();      // sopracciglia arcuate, furbette
+        c.beginPath(); c.moveTo(cx + 2, hy - 3); c.quadraticCurveTo(cx + 7, hy - 6.5, cx + 13, hy - 1.5); c.stroke();
+        c.strokeStyle = '#d6a085'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx - 0.5, hy + 8); c.quadraticCurveTo(cx - 2.5, hy + 13, cx + 1, hy + 13); c.stroke();   // naso
+        Px.ell(c, cx, hy + 14, 2.5, 1, '#e6b793');
+        c.beginPath(); c.moveTo(cx - 9, hy + 17); c.quadraticCurveTo(cx, hy + 20, cx + 9, hy + 17); c.quadraticCurveTo(cx, hy + 31, cx - 9, hy + 17);   // sorriso con i denti
+        c.fillStyle = '#ffffff'; c.fill(); c.strokeStyle = '#b9323f'; c.lineWidth = 1.6; c.lineJoin = 'round'; c.stroke();
+        c.strokeStyle = '#e34a5e'; c.lineWidth = 1; c.beginPath(); c.moveTo(cx - 6, hy + 19); c.quadraticCurveTo(cx, hy + 25, cx + 6, hy + 19); c.stroke();
+        Px.ell(c, cx - 20, hy + 16, 1.8, 2.4, PAL.gold); Px.ell(c, cx + 20, hy + 16, 1.8, 2.4, PAL.gold);   // orecchini
         c.fillStyle = HAIR; c.fillRect(cx - 18, hy - 6, 6, 14); c.fillRect(cx + 12, hy - 6, 6, 14);        // ciocche ai lati
       }
       // ---------- cuffia ----------

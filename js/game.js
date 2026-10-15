@@ -147,12 +147,15 @@ function GameScene(app, outfit) {
     if (!lvl) return img;
     let arr = greenCache.get(img);
     if (!arr) greenCache.set(img, (arr = []));
-    if (!arr[lvl]) arr[lvl] = Px.make(img.width, img.height, (c) => {
-      c.drawImage(img, 0, 0);
-      c.globalCompositeOperation = 'source-atop';
-      c.fillStyle = `rgba(70,220,70,${0.08 * lvl + 0.1})`;
-      c.fillRect(0, 0, img.width, img.height);
-    });
+    if (!arr[lvl]) {
+      arr[lvl] = Px.make(img.width, img.height, (c) => {
+        c.drawImage(img, 0, 0);
+        c.globalCompositeOperation = 'source-atop';
+        c.fillStyle = `rgba(70,220,70,${0.08 * lvl + 0.1})`;
+        c.fillRect(0, 0, img.width, img.height);
+      }, true);
+      arr[lvl].__lw = Px.lw(img); arr[lvl].__lh = Px.lh(img); arr[lvl].__S = img.__S;
+    }
     return arr[lvl];
   }
 
@@ -191,7 +194,7 @@ function GameScene(app, outfit) {
         const sel = (d.state === 'ask' && d.sel === i) || (d.state === 'anim' && d.pick === i);
         if (sel) Px.rect(ctx, x - 22 + shake, 156 + dy, 44, 70, (Math.floor(g.frameT * 5) % 2 && d.state === 'ask') ? '#ffffff' : PAL.gold);
         Px.blit(ctx, dr.base, x + shake, DOOR_BOTTOM + dy, 1);
-        ctx.imageSmoothingEnabled = false;
+        ctx.imageSmoothingEnabled = true;
         const lw = 33 * (1 - open * 0.88);
         ctx.drawImage(dr.leaf, x - 16.5 + shake, 162 + dy, lw, 60);
         // cartello con la scelta
@@ -419,14 +422,14 @@ function GameScene(app, outfit) {
       const gr = c.createRadialGradient(W, H * 0.95, H * 0.35, W, H * 0.95, H * 1.05);
       gr.addColorStop(0, 'rgba(8,16,36,0)'); gr.addColorStop(1, 'rgba(8,16,36,0.42)');
       c.fillStyle = gr; c.fillRect(0, 0, W * 2, H * 2);
-    });
+    }, true);
     const hz = CFG.HORIZON_Y;
     const hg = ctx.createLinearGradient(0, hz - 36, 0, hz + 46);
     hg.addColorStop(0, 'rgba(255,252,236,0)'); hg.addColorStop(0.5, 'rgba(255,252,236,0.22)'); hg.addColorStop(1, 'rgba(255,252,236,0)');
     ctx.fillStyle = hg; ctx.fillRect(0, hz - 36, W, 82);
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(vignette, 0, 0, W, H);
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
   }
 
   function drawObj(ctx, o) {
@@ -434,8 +437,8 @@ function GameScene(app, outfit) {
     if (z > 3.0 || z < -0.3 || o.done) return;
     const s = World.proj(z);
     const img = o.p.img;
-    let w = img.width * 0.5 * s;
-    const h = img.height * 0.5 * s;
+    let w = Px.lw(img) * 0.5 * s;
+    const h = Px.lh(img) * 0.5 * s;
     const x = World.laneXf(o.lane, s);
     let y = World.scrY(s);
     if (o.p.kind === 'pickup') {
@@ -455,7 +458,6 @@ function GameScene(app, outfit) {
     ctx.globalAlpha = fade;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(img, x - w / 2, y - h, w, h);
-    ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
   }
 
@@ -468,14 +470,14 @@ function GameScene(app, outfit) {
     const s = World.proj(z);
     const img = Props.hint(k);
     const hs = Math.max(s, 0.5);
-    const w = img.width * 0.5 * hs, h = img.height * 0.5 * hs;
+    const w = Px.lw(img) * 0.5 * hs, h = Px.lh(img) * 0.5 * hs;
     const x = World.laneXf(o.lane, s);
     const top = (o.p.topUnits || 40) + 8;
     const bob = Math.sin(g.time * 9) * 2 * hs;
     ctx.globalAlpha = Px.clamp((1.6 - z) / 0.3, 0, 1);
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(img, x - w / 2, World.scrY(s) - top * s - h + bob, w, h);
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
     ctx.globalAlpha = 1;
   }
 
@@ -536,7 +538,7 @@ function GameScene(app, outfit) {
   }
 
   function drawHud(ctx) {
-    for (let i = 0; i < CFG.MAX_HITS; i++) ctx.drawImage(i < CFG.MAX_HITS - g.hits ? crossOn : crossOff, 4 + i * 11, 4, crossOn.width * 0.5, crossOn.height * 0.5);
+    for (let i = 0; i < CFG.MAX_HITS; i++) ctx.drawImage(i < CFG.MAX_HITS - g.hits ? crossOn : crossOff, 4 + i * 11, 4, Px.lw(crossOn) * 0.5, Px.lh(crossOn) * 0.5);
     Px.text(ctx, String(g.score), W / 2, 6, '#ffffff', 3, 'center', PAL.ink);
     Px.button(ctx, PAUSE_BTN.x, PAUSE_BTN.y, PAUSE_BTN.w, PAUSE_BTN.h, '', { color: '#3e7bd6', dark: '#27559c', light: '#6ea0ec' });
     Px.rect(ctx, PAUSE_BTN.x + 5, PAUSE_BTN.y + 4.5, 2.5, 8, '#fff');
@@ -551,7 +553,7 @@ function GameScene(app, outfit) {
     Px.rect(ctx, W - 10, 24, 4, 8, '#3fb858');
     // CFU raccolti
     Px.rect(ctx, 2, 34, 120, 14, 'rgba(16,21,31,0.45)'); Px.rect(ctx, 2, 34, 120, 1, 'rgba(255,255,255,0.25)');
-    ctx.drawImage(medalImg, 4, 36, medalImg.width * 0.25, medalImg.height * 0.25);
+    ctx.drawImage(medalImg, 4, 36, Px.lw(medalImg) * 0.25, Px.lh(medalImg) * 0.25);
     Px.text(ctx, g.cfu + '/' + CFG.CFU_GOAL + ' CFU', 22, 40, '#ffe27a', 3, 'left', PAL.ink);
     // cartello di benvenuto all'universita'
     if (g.zoneBannerT > 0 && g.phase !== 'door') {

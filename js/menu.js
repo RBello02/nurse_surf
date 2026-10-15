@@ -13,15 +13,15 @@ function MenuScene(app) {
 
   function drawTitle(ctx) {
     const bob = Math.sin(t * 2.5) * 1.5;
-    Px.text(ctx, 'NURSE', W / 2, 3 + bob, PAL.white, 8, 'center', PAL.ink);
-    Px.text(ctx, 'SURF', W / 2 - 8, 33 + bob, PAL.gold, 8, 'center', PAL.ink);
+    Px.text(ctx, 'NURSE', W / 2, 5 + bob, PAL.white, 6, 'center', PAL.ink);
+    Px.text(ctx, 'SURF', W / 2 - 8, 29 + bob, PAL.gold, 6, 'center', PAL.ink);
     // croce rossa accanto al titolo
-    const cx = W / 2 + 48, cy = 35 + bob;
+    const cx = W / 2 + 46, cy = 33 + bob;
     Px.rect(ctx, cx - 1, cy - 1, 20, 20, PAL.ink);
     Px.rect(ctx, cx, cy, 18, 18, '#ffffff');
     Px.rect(ctx, cx + 6, cy + 2, 6, 14, PAL.red);
     Px.rect(ctx, cx + 2, cy + 6, 14, 6, PAL.red);
-    Px.text(ctx, 'LE AVVENTURE DI ' + CFG.NAME, W / 2, 66, '#ffffff', 2, 'center', PAL.ink);
+    Px.text(ctx, 'LE AVVENTURE DI ' + CFG.NAME, W / 2, 59, '#ffffff', 2, 'center', PAL.ink);
   }
 
   function drawMute(ctx) {

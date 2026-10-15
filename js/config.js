@@ -3,6 +3,7 @@ const CFG = {
   NAME: 'MARTINA',
   W: 180,
   H: 320,
+  RES: 4,         // pixel reali per unita' di progetto (720x1280)
   LANES: 3,
   // Prospettiva: la corsia si allarga dall'orizzonte verso il basso
   HORIZON_Y: 110,

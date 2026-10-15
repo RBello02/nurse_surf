@@ -11,6 +11,6 @@ html, body {
 /* Le dimensioni del canvas vengono calcolate in main.js (resize) mantenendo il rapporto 9:16 */
 canvas#game {
   display: block; width: 180px; height: 320px;
-  image-rendering: pixelated; image-rendering: crisp-edges;
+  image-rendering: auto;
   background: #1b2a41; touch-action: none;
 }

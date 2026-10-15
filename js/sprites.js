@@ -4,17 +4,27 @@
 // Gli sprite sono invece disegnati in pixel reali (canvas offscreen, ctx.__q = 1) e poi riportati
 // alla scala di progetto con Px.blit (1 pixel sprite = mezza unita').
 const Px = (() => {
-  function make(w, h, drawFn) {
+  // Sprite: disegnati in "pixel sprite" logici, ma su un canvas supersampled (SS x) con curve antialiasate,
+  // cosi' restano nitidi e morbidi a qualsiasi scala. raw = canvas 1:1 senza supersampling (effetti, sagome).
+  const SS = 2;
+  function make(w, h, drawFn, raw = false, ss = SS) {
+    const S = raw ? 1 : ss;
     const c = document.createElement('canvas');
-    c.width = w; c.height = h;
+    c.width = Math.ceil(w * S); c.height = Math.ceil(h * S);
+    c.__lw = w; c.__lh = h; c.__S = S;
     const x = c.getContext('2d');
-    x.imageSmoothingEnabled = false;
-    x.__q = 1;
+    x.imageSmoothingEnabled = true;
+    x.imageSmoothingQuality = 'high';
+    if (!raw) { x.scale(S, S); x.__q = 1; x.__smooth = true; } else x.__q = 1;
     if (drawFn) drawFn(x, w, h);
     return c;
   }
+  const lw = (img) => img.__lw || img.width;
+  const lh = (img) => img.__lh || img.height;
 
   const qOf = (ctx) => ctx.__q || 1;
+  // per il testo il canvas principale (q = 1/RES) conta come q = 0.5: la dimensione di f resta quella di sempre
+  const tq = (ctx) => (ctx.__smooth && qOf(ctx) < 0.5 ? 0.5 : qOf(ctx));
   const snap = (v, q) => Math.round(v / q) * q;
 
   function rect(ctx, x, y, w, h, color) {
@@ -27,6 +37,12 @@ const Px = (() => {
 
   // Ellisse piena (a scanline, bordi netti)
   function ell(ctx, cx, cy, rx, ry, color) {
+    if (ctx.__smooth) {
+      const o = ctx.__q === 1 ? 0.5 : 0;
+      ctx.fillStyle = color; ctx.beginPath();
+      ctx.ellipse(cx, cy + o, Math.max(0.5, rx), Math.max(0.5, ry + o), 0, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
     ctx.fillStyle = color;
     for (let y = -Math.floor(ry); y <= Math.floor(ry); y++) {
       const half = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry))));
@@ -36,6 +52,11 @@ const Px = (() => {
 
   // Segmento spesso th pixel (per braccia e gambe)
   function line(ctx, x0, y0, x1, y1, th, color) {
+    if (ctx.__smooth) {
+      ctx.strokeStyle = color; ctx.lineWidth = th; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      return;
+    }
     ctx.fillStyle = color;
     const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
     for (let i = 0; i <= n; i++) {
@@ -51,74 +72,47 @@ const Px = (() => {
     if (lo) { ctx.fillStyle = lo; ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x + w - 1, y, 1, h); }
   }
 
-  // ---- font 5x7 (35 caratteri per glifo, riga per riga) ----
-  const G = (s) => s.replace(/,/g, '');
-  const FONT = {
-    A: G('01110,10001,10001,11111,10001,10001,10001'), B: G('11110,10001,10001,11110,10001,10001,11110'),
-    C: G('01110,10001,10000,10000,10000,10001,01110'), D: G('11110,10001,10001,10001,10001,10001,11110'),
-    E: G('11111,10000,10000,11110,10000,10000,11111'), F: G('11111,10000,10000,11110,10000,10000,10000'),
-    G: G('01110,10001,10000,10111,10001,10001,01111'), H: G('10001,10001,10001,11111,10001,10001,10001'),
-    I: G('01110,00100,00100,00100,00100,00100,01110'), J: G('00111,00010,00010,00010,00010,10010,01100'),
-    K: G('10001,10010,10100,11000,10100,10010,10001'), L: G('10000,10000,10000,10000,10000,10000,11111'),
-    M: G('10001,11011,10101,10101,10001,10001,10001'), N: G('10001,11001,10101,10011,10001,10001,10001'),
-    O: G('01110,10001,10001,10001,10001,10001,01110'), P: G('11110,10001,10001,11110,10000,10000,10000'),
-    Q: G('01110,10001,10001,10001,10101,10010,01101'), R: G('11110,10001,10001,11110,10100,10010,10001'),
-    S: G('01111,10000,10000,01110,00001,00001,11110'), T: G('11111,00100,00100,00100,00100,00100,00100'),
-    U: G('10001,10001,10001,10001,10001,10001,01110'), V: G('10001,10001,10001,10001,10001,01010,00100'),
-    W: G('10001,10001,10001,10101,10101,11011,10001'), X: G('10001,10001,01010,00100,01010,10001,10001'),
-    Y: G('10001,10001,01010,00100,00100,00100,00100'), Z: G('11111,00001,00010,00100,01000,10000,11111'),
-    0: G('01110,10001,10011,10101,11001,10001,01110'), 1: G('00100,01100,00100,00100,00100,00100,01110'),
-    2: G('01110,10001,00001,00010,00100,01000,11111'), 3: G('11110,00001,00001,01110,00001,00001,11110'),
-    4: G('00010,00110,01010,10010,11111,00010,00010'), 5: G('11111,10000,11110,00001,00001,10001,01110'),
-    6: G('00110,01000,10000,11110,10001,10001,01110'), 7: G('11111,00001,00010,00100,01000,01000,01000'),
-    8: G('01110,10001,10001,01110,10001,10001,01110'), 9: G('01110,10001,10001,01111,00001,00010,01100'),
-    '!': G('00100,00100,00100,00100,00100,00000,00100'), '.': G('00000,00000,00000,00000,00000,01100,01100'),
-    ':': G('00000,01100,01100,00000,01100,01100,00000'), '-': G('00000,00000,00000,11111,00000,00000,00000'),
-    '/': G('00001,00001,00010,00100,01000,10000,10000'), "'": G('00100,00100,01000,00000,00000,00000,00000'),
-    '?': G('01110,10001,00001,00010,00100,00000,00100'), '+': G('00000,00100,00100,11111,00100,00100,00000'),
-    ',': G('00000,00000,00000,00000,01100,00100,01000'), ' ': '0'.repeat(35)
-  };
-
+  // ---- testo: font arrotondato e morbido (antialiasato), tutto maiuscolo senza accenti ----
+  const FONT_STACK = '"Arial Rounded MT Bold","Trebuchet MS","Verdana","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
+  const measureCtx = document.createElement('canvas').getContext('2d');
+  const widthCache = {};
   function norm(str) {
-    return String(str).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+    return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
   }
-
-  // f = pixel reali per "pixel" del font (intero). Larghezza in unita' del contesto.
+  // dimensione del carattere (unita' del contesto) per il parametro f: f=2 sul canvas principale ~ 7 unita' di altezza
+  const CONDENSE = 0.76;     // il font e' compresso in larghezza (come un 'condensed')
+  const fontPx = (f, q) => 11 * f * q;
+  function measure(s) {
+    if (widthCache[s] == null) { measureCtx.font = `900 100px ${FONT_STACK}`; widthCache[s] = measureCtx.measureText(s).width / 100 + 0.035 * s.length; }
+    return widthCache[s];
+  }
+  // f = grandezza del testo (come prima). Larghezza in unita' del contesto.
   function textWidth(str, f = 2, ctx = null) {
     const s = norm(str);
-    const u = f * (ctx ? qOf(ctx) : 0.5);
-    return s.length ? (s.length * 6 - 1) * u : 0;
+    return s.length ? measure(s) * CONDENSE * fontPx(f, ctx ? tq(ctx) : 0.5) : 0;
   }
 
-  function glyphs(ctx, s, x, y, color, u) {
-    ctx.fillStyle = color;
-    let cx = x;
-    for (const ch of s) {
-      const g = FONT[ch] || FONT['?'];
-      for (let i = 0; i < 35; i++) {
-        if (g[i] === '1') ctx.fillRect(cx + (i % 5) * u, y + Math.floor(i / 5) * u, u, u);
-      }
-      cx += 6 * u;
-    }
-  }
-
-  // x,y in unita' del contesto; f intero (pixel reali per pixel del font); align: left|center|right
+  // x,y = angolo in alto a sinistra del testo; align: left|center|right
   function text(ctx, str, x, y, color = '#fff', f = 2, align = 'left', outline = null) {
     const s = norm(str);
-    const q = qOf(ctx);
-    const u = f * q;
-    const w = s.length ? (s.length * 6 - 1) * u : 0;
-    let px = snap(x, q);
-    if (align === 'center') px = snap(x - w / 2, q);
-    else if (align === 'right') px = snap(x - w, q);
-    const py = snap(y, q);
+    if (!s.length) return 0;
+    const q = tq(ctx), size = fontPx(f, q), w = measure(s) * size * CONDENSE;
+    ctx.save();
+    ctx.font = `900 ${size}px ${FONT_STACK}`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    if ('letterSpacing' in ctx) ctx.letterSpacing = (0.03 * size) + 'px';
+    const px = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+    const base = y + 7.5 * f * q;                 // la linea di base cade dove stava il fondo del vecchio font
     if (outline) {
-      const o = Math.max(q, Math.round(f / 2) * q);
-      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
-        glyphs(ctx, s, px + dx * o, py + dy * o, outline, u);
-      }
+      ctx.lineJoin = 'round'; ctx.miterLimit = 2;
+      ctx.lineWidth = Math.max(q, f * q) * 1.5; ctx.strokeStyle = outline;
+      ctx.save(); ctx.translate(px, base); ctx.scale(CONDENSE, 1); ctx.strokeText(s, 0, 0); ctx.restore();
     }
-    glyphs(ctx, s, px, py, color, u);
+    ctx.fillStyle = color;
+    ctx.translate(px, base); ctx.scale(CONDENSE, 1);
+    ctx.fillText(s, 0, 0);
+    ctx.restore();
     return w;
   }
 
@@ -160,32 +154,37 @@ const Px = (() => {
 
   // Sagoma monocolore dello sprite (serve per i contorni)
   function tint(src, color) {
-    return make(src.width, src.height, (c) => {
-      c.drawImage(src, 0, 0);
-      c.globalCompositeOperation = 'source-in';
-      c.fillStyle = color;
-      c.fillRect(0, 0, src.width, src.height);
-    });
+    const c = make(src.width, src.height, (g) => {
+      g.drawImage(src, 0, 0);
+      g.globalCompositeOperation = 'source-in';
+      g.fillStyle = color;
+      g.fillRect(0, 0, src.width, src.height);
+    }, true);
+    c.__lw = lw(src); c.__lh = lh(src); c.__S = src.__S || 1;
+    return c;
   }
 
-  // Contorno scuro di 1 pixel attorno allo sprite (+1px di margine per lato)
+  // Contorno scuro sottile attorno allo sprite (+1 pixel logico di margine per lato)
   function outlined(src, color = '#10151f') {
+    const S = src.__S || 1, T = 0.8 * S, M = Math.ceil(S);
     const sil = tint(src, color);
-    return make(src.width + 2, src.height + 2, (c) => {
-      for (const [dx, dy] of [[0, 1], [2, 1], [1, 0], [1, 2], [0, 0], [2, 0], [0, 2], [2, 2]]) c.drawImage(sil, dx, dy);
-      c.drawImage(src, 1, 1);
-    });
+    const c = make(src.width + 2 * M, src.height + 2 * M, (g) => {
+      const n = 12;
+      for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; g.drawImage(sil, M + Math.cos(a) * T, M + Math.sin(a) * T); }
+      g.drawImage(src, M, M);
+    }, true);
+    c.__lw = lw(src) + 2 * M / S; c.__lh = lh(src) + 2 * M / S; c.__S = S;
+    return c;
   }
 
   // Disegna uno sprite sul canvas principale. (x, yBottom) = centro-base in unita' di progetto,
-  // k = scala (1 = 1 pixel sprite -> mezza unita'). Dimensioni in unita': w = img.width * k / 2.
+  // k = scala (1 = 1 pixel sprite -> mezza unita'). Dimensioni in unita': w = larghezza logica * k / 2.
   function blit(ctx, img, x, yBottom, k = 1) {
-    const w = img.width * k * 0.5, h = img.height * k * 0.5;
-    // scale non intere: interpolazione morbida (meno sgranato); intere: pixel netti
-    ctx.imageSmoothingEnabled = Math.abs(k - Math.round(k)) > 0.01;
-    ctx.drawImage(img, snap(x - w / 2, 0.5), snap(yBottom - h, 0.5), Math.max(0.5, w), Math.max(0.5, h));
-    ctx.imageSmoothingEnabled = false;
+    const w = lw(img) * k * 0.5, h = lh(img) * k * 0.5;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, Math.round((x - w / 2) * 4) / 4, Math.round((yBottom - h) * 4) / 4, Math.max(0.25, w), Math.max(0.25, h));
   }
 
-  return { make, rect, ell, line, bev, text, textWidth, button, hit, hash, lerp, clamp, ease, tint, outlined, blit };
+  return { make, lw, lh, rect, ell, line, bev, text, textWidth, button, hit, hash, lerp, clamp, ease, tint, outlined, blit };
 })();

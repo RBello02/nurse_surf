@@ -12,7 +12,8 @@ Come si riconoscono gli ostacoli (sopra ognuno compare anche un'icona):
 - oggetti **alti** (lettini con pazienti, sedia a rotelle, carrello, distributore) con freccia rossa laterale: **cambia corsia**
 
 HTML5 Canvas + JavaScript puro: nessuna dipendenza per giocare, nessun file di immagini o audio
-(sprite e suoni sono generati dal codice).
+(sprite e suoni sono generati dal codice). Grafica ad alta definizione: schermo a 720x1280 (`CFG.RES`), corridoio disegnato con poligoni in
+prospettiva, personaggi e ostacoli con bordi morbidi, testo con font arrotondato antialiasato.
 
 ## Gioca subito
 

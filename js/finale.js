@@ -159,11 +159,10 @@ function FinaleScene(app, params) {
     if (p <= 0) return;
     const baseY = Px.lerp(-20, 52, Px.ease(p));
     const f = 3, u = f * 0.5;
-    let x = CX - Px.textWidth(TITLE, f) / 2;
+    const x0 = CX - Px.textWidth(TITLE, f) / 2;
     for (let i = 0; i < TITLE.length; i++) {
       const wave = Math.sin(t * 6 + i * 0.6) * 2;
-      Px.text(ctx, TITLE[i], x, baseY + wave, (Math.floor(t * 8 + i) % 3 === 0) ? '#ffffff' : PAL.gold, f, 'left', PAL.ink);
-      x += 6 * u;
+      Px.text(ctx, TITLE[i], x0 + Px.textWidth(TITLE.slice(0, i), f), baseY + wave, (Math.floor(t * 8 + i) % 3 === 0) ? '#ffffff' : PAL.gold, f, 'left', PAL.ink);
     }
     if (p >= 1) {
       if (CFG.FINALE.subtitle) Px.text(ctx, CFG.FINALE.subtitle, CX, 72, '#ffffff', 2, 'center', PAL.ink);
@@ -193,7 +192,7 @@ function FinaleScene(app, params) {
 
     // corona in volo
     const wp = wreathPos();
-    if (wp.show) Px.blit(ctx, wreathImg, wp.x, wp.y + wreathImg.height * 0.25 * wp.k, wp.k);
+    if (wp.show) Px.blit(ctx, wreathImg, wp.x, wp.y + Px.lh(wreathImg) * 0.25 * wp.k, wp.k);
 
     fx.draw(ctx);
     drawTitle(ctx);

@@ -2,12 +2,14 @@
 (() => {
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  // Risoluzione reale 360x640; si disegna in unita' di progetto 180x320 (1 unita' = 2 pixel reali).
-  const RES = 2;
+  // Risoluzione reale 720x1280; si disegna in unita' di progetto 180x320 (1 unita' = 4 pixel reali).
+  const RES = CFG.RES;
   canvas.width = CFG.W * RES; canvas.height = CFG.H * RES;
   ctx.setTransform(RES, 0, 0, RES, 0, 0);
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.__q = 1 / RES;
+  ctx.__smooth = true;
 
   let scene = null;
   let trans = null;   // { phase: 'out'|'in', t, time, color, next }
