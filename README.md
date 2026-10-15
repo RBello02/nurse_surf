@@ -16,8 +16,8 @@ HTML5 Canvas + JavaScript puro: nessuna dipendenza per giocare, nessun file di i
 
 ## Gioca subito
 
-**[Apri il gioco](https://rawcdn.githack.com/RBello02/nurse_surf/3c88263307b92e1857c18004befd11ee0b179ac4/index.html)**: funziona dal browser del telefono, senza installare nulla
-(link: https://rawcdn.githack.com/RBello02/nurse_surf/3c88263307b92e1857c18004befd11ee0b179ac4/index.html).
+**[Apri il gioco](https://rawcdn.githack.com/RBello02/nurse_surf/b4c2e8eea915aad82da7b19c57168d47d4d7aaf6/index.html)**: funziona dal browser del telefono, senza installare nulla
+(link: https://rawcdn.githack.com/RBello02/nurse_surf/b4c2e8eea915aad82da7b19c57168d47d4d7aaf6/index.html).
 Il link e' fissato a una versione precisa: dopo ogni aggiornamento viene rigenerato con `node scripts/update-play-link.js`.
 
 ## Giocare in locale (PC o telefono sulla stessa rete Wi-Fi)
