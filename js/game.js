@@ -93,6 +93,7 @@ function GameScene(app, outfit) {
   // ---------- indovinello delle tre porte ----------
   const DOOR_X = [30, 90, 150], DOOR_BOTTOM = 222, HERO_DOOR_FEET = 244, HERO_DOOR_K = 1.25;
   const DOOR_BOXES = DOOR_X.map((x) => ({ x: x - 21, y: 158, w: 42, h: 68 }));
+  const CATCH = { arrive: 1.3, back: 1.9, stab: 2.2, end: 6.2 };       // tempi (s) della scena della cattura
   const NURSE_K = 0.8, NURSE_TIP = 63, TH_BACK = -0.2, TH_STAB = 0.6;
 
   function startDoor() {
@@ -339,7 +340,7 @@ function GameScene(app, outfit) {
     Sfx.hit();
     fx.burst(World.laneXf(g.laneF, 1), PY - 26, ['#ffd23f', '#ffffff', '#e0344b'], 18, 80, 0.5, 120);
     if (g.hits >= CFG.MAX_HITS) {
-      g.phase = 'caught'; g.roared = false; g.phaseT = 0; g.gapTarget = -0.2; g.jumpT = 0; g.slideT = 0;
+      g.phase = 'caught'; g.phaseT = 0; g.gapTarget = 1.2; g.jumpT = 0; g.slideT = 0; g.catchEv = {}; g.catchHx = World.laneXf(g.laneF, 1); g.catchDir = g.catchHx <= 90 ? 1 : -1;
       Sfx.stopMusic();
     }
   }
@@ -383,11 +384,14 @@ function GameScene(app, outfit) {
     if (g.phase === 'over') { g.phaseT += dt; return; }
     if (g.phase === 'caught') {
       g.phaseT += dt;
+      const pt = g.phaseT, ev = g.catchEv, hx = g.catchHx, once = (k, tm, fn) => { if (!ev[k] && pt >= tm) { ev[k] = true; fn(); } };
       g.speed = Math.max(0, g.speed - dt * 3);
       st.T += g.speed * dt;
       g.gapV += (g.gapTarget - g.gapV) * Math.min(1, dt * 5);
-      if (g.phaseT > 0.72 && !g.roared) { g.roared = true; Sfx.roar(); g.shake = 0.5; g.flash = 0.25; fx.burst(World.laneXf(g.laneF, 1), PY - 30, ['#ffffff', '#7ee08f', '#2c2c34'], 28, 100, 0.8, 60); }
-      if (g.phaseT > 1.5) finish();
+      once('warn', 0.35, () => Sfx.warn());
+      once('stab', CATCH.stab, () => { g.flash = 0.35; g.shake = 0.5; Sfx.hit(); fx.burst(hx, PY - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
+      once('roar', CATCH.stab + 0.5 + 0.6 * 1.6, () => { Sfx.roar(); g.shake = 0.7; g.flash = 0.3; fx.burst(hx, PY - 30, ['#ffffff', '#2c2c34', '#7ee08f', '#6e32aa'], 36, 120, 0.8, 80); });
+      if (pt > CATCH.end) finish();
       return;
     }
 
@@ -523,8 +527,12 @@ function GameScene(app, outfit) {
     else pose = Hero.run(g.frameT, 12).pose;
     Gfx.softShadow(ctx, x, PY, Math.max(8, 17 - jh * 0.2), 3.4, 0.4 * (1 - Math.min(0.6, jh / 80)));
     if (g.phase === 'caught' || g.phase === 'over') {                        // presa dall'infermiera: puntura e trasformazione
-      const amt = g.phase === 'over' ? 1 : Px.clamp(g.phaseT / 1.2, 0, 1);
-      drawHulk(ctx, 'stand', x, PY + 1, HK, amt, g.frameT);
+      const sp = g.phase === 'over' ? 9 : g.phaseT - CATCH.stab;
+      const amt = sp > 0.5 ? Px.clamp((sp - 0.5) / 1.6, 0, 1) : 0;
+      let cp = 'stand', cy = PY + 1;
+      if (g.phase === 'caught' && sp >= 0 && sp < 0.9) { cp = 'jump'; cy -= Math.abs(Math.sin(sp * 9)) * 8; }
+      drawHulk(ctx, cp, g.catchHx != null ? g.catchHx : x, cy, HK, amt, g.frameT);
+      if (g.phase === 'caught' && sp > 0.7 && sp < 3.4) drawCatchSmoke(ctx, g.catchHx, PY + 1, sp);
       return;
     }
     if (g.invul > 0 && Math.floor(g.invul * 14) % 2 === 0) return;
@@ -545,6 +553,35 @@ function GameScene(app, outfit) {
     ctx.scale(sx * yaw, sy);
     Hero.draw(ctx, outfit, pose, 0, 0, HK);
     ctx.restore();
+  }
+
+  // infermiera che arriva di corsa, prende la rincorsa e punge Martina
+  const catchSmoke = { list: [] };
+  function drawCatchSmoke(ctx, hx, feet, sp) {
+    const d = { smoke: catchSmoke.list };
+    drawSmoke(ctx, d, hx, feet, HK, sp);
+    catchSmoke.list = d.smoke;
+  }
+  function drawCatchNurse(ctx) {
+    const pt = g.phaseT, hx = g.catchHx, dir = g.catchDir, feet = PY + 1;
+    const finalX = hx + dir * (NURSE_TIP + 4), off = dir > 0 ? W + 70 : -70;
+    const p = Px.ease(Px.clamp(pt / CATCH.arrive, 0, 1));
+    const nx = Px.lerp(off, finalX, p);
+    let th = 0;
+    if (pt > CATCH.arrive + 0.3 && pt < CATCH.back) th = TH_BACK * Px.ease((pt - CATCH.arrive - 0.3) / (CATCH.back - CATCH.arrive - 0.3));
+    else if (pt >= CATCH.back) th = Px.lerp(TH_BACK, TH_STAB, Px.clamp((pt - CATCH.stab + 0.15) / 0.15, 0, 1));
+    const moving = pt < CATCH.arrive + 0.3, bounce = moving ? Math.abs(Math.sin(pt * 14)) * 3 : 0;
+    ctx.fillStyle = 'rgba(16,21,31,0.25)'; ctx.fillRect(nx - 22, feet - 1, 44, 3);
+    ctx.save();
+    ctx.translate(nx, feet + 4 - bounce);
+    ctx.rotate(dir > 0 ? -th : th);
+    Px.blit(ctx, Chaser.get(Math.floor(pt * (moving ? 12 : 5)), 'front', dir > 0), 0, 0, NURSE_K);
+    ctx.restore();
+    if (pt > 0.3 && pt < CATCH.arrive + 0.3) Px.text(ctx, '!', hx, feet - 62 + Math.sin(pt * 16) * 1.2, PAL.red, 6, 'center', '#ffffff');
+    const sp = pt - CATCH.stab;
+    if (sp >= 0 && sp < 1.2) Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff');
+    if (sp > 0.5 && sp < 1.4) Px.text(ctx, 'PUNTURA!', 90, 112, PAL.gold, 5, 'center', PAL.ink);
+    if (sp > 1.7 && sp < 3.4) Px.text(ctx, sp > 2.3 ? 'GRAAAH!' : 'GRRR...', 90, feet - 90 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), '#7ee08f', sp > 2.3 ? 5 : 3, 'center', PAL.ink);
   }
 
   function drawChaser(ctx) {
@@ -636,7 +673,8 @@ function GameScene(app, outfit) {
     }
     if (!heroDone && g.phase !== 'door') drawHero(ctx);
     for (const o of objs) drawHint(ctx, o);
-    if (!(g.phase === 'door' && g.door && g.door.result === 'wrong' && g.door.t > 0.7)) drawChaser(ctx);
+    if (!(g.phase === 'door' && g.door && g.door.result === 'wrong' && g.door.t > 0.7) && !(g.phase === 'caught' && g.phaseT > 0.15)) drawChaser(ctx);
+    if (g.phase === 'caught') drawCatchNurse(ctx);
     if (g.phase === 'door' && g.door) drawDoorScene(ctx);
     fx.draw(ctx);
     Gfx.speedLines(ctx, g.time, g.speed);
