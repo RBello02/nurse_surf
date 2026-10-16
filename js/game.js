@@ -22,6 +22,9 @@ function GameScene(app, outfit) {
   const BTN_RETRY = { x: 30, y: 184, w: 120, h: 30 };
   const BTN_MENU = { x: 30, y: 222, w: 120, h: 26 };
   const BTN_RESUME = { x: 30, y: 150, w: 120, h: 30 };
+  const SPEEDS = [{ k: 0.8, l: 'LENTO' }, { k: 1, l: 'NORMALE' }, { k: 1.2, l: 'VELOCE' }];
+  const SPD_BTN = SPEEDS.map((v, i) => ({ x: 24 + i * 44, y: 122, w: 40, h: 18 }));
+  let speedK = (Save.get().speedK) || 1;
   const BTN_QUIT = { x: 30, y: 188, w: 120, h: 26 };
 
   // icone HUD: croce medica (vite) e medaglietta
@@ -369,7 +372,7 @@ function GameScene(app, outfit) {
     g.invul = Math.max(0, g.invul - dt);
     g.stumble = Math.max(0, g.stumble - dt);
 
-    let target = Math.min(CFG.MAX_SPEED, CFG.START_SPEED + CFG.SPEED_GAIN * g.time);
+    let target = Math.min(CFG.MAX_SPEED, CFG.START_SPEED + CFG.SPEED_GAIN * g.time) * speedK;
     if (g.phase === 'corridor' || g.phase === 'finishing') target = Math.min(target, 1.25);
     g.speed += (target - g.speed) * Math.min(1, dt * 2);
     st.T += g.speed * (1 - 0.45 * (g.stumble / 0.8)) * dt;
@@ -614,7 +617,12 @@ function GameScene(app, outfit) {
 
     if (g.paused) {
       dim(ctx, 0.65);
-      Px.text(ctx, 'PAUSA', W / 2, 90, '#fff', 6, 'center', PAL.ink);
+      Px.text(ctx, 'PAUSA', W / 2, 84, '#fff', 6, 'center', PAL.ink);
+      Px.text(ctx, 'VELOCITA', W / 2, 111, '#fff', 2, 'center', PAL.ink);
+      SPEEDS.forEach((v, i) => {
+        const on = v.k === speedK, b = SPD_BTN[i];
+        Px.button(ctx, b.x, b.y, b.w, b.h, v.l, on ? { f: 1.5, color: '#f6c344', dark: '#b98a1c', light: '#ffe27a', text: '#3a2a00' } : { f: 1.5, color: '#3e7bd6', dark: '#27559c', light: '#6ea0ec' });
+      });
       Px.button(ctx, BTN_RESUME.x, BTN_RESUME.y, BTN_RESUME.w, BTN_RESUME.h, 'RIPRENDI', { f: 3 });
       Px.button(ctx, BTN_QUIT.x, BTN_QUIT.y, BTN_QUIT.w, BTN_QUIT.h, 'MENU', { f: 3, color: '#e0344b', dark: '#a82036', light: '#f06277' });
     }
@@ -642,7 +650,9 @@ function GameScene(app, outfit) {
         return;
       }
       if (g.paused) {
-        if (Px.hit(BTN_RESUME, p, 3)) { Sfx.select(); setPaused(false); }
+        const si = SPD_BTN.findIndex((b) => Px.hit(b, p, 2));
+        if (si >= 0) { speedK = SPEEDS[si].k; Save.set({ speedK }); Sfx.select(); }
+        else if (Px.hit(BTN_RESUME, p, 3)) { Sfx.select(); setPaused(false); }
         else if (Px.hit(BTN_QUIT, p, 3)) { Sfx.select(); app.go('menu'); }
         return;
       }
