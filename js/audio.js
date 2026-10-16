@@ -77,6 +77,7 @@ const Sfx = (() => {
     lane() { tone(440, 0.06, 'triangle', 0.05, 520); },
     coin() { tone(988, 0.07, 'square', 0.06); tone(1319, 0.14, 'square', 0.06, null, 0.07); },
     hit() { noise(0.25, 0.1); tone(180, 0.3, 'sawtooth', 0.09, 60); },
+    roar() { noise(0.7, 0.12); tone(110, 0.8, 'sawtooth', 0.12, 45); tone(220, 0.5, 'square', 0.05, 90, 0.1); },
     warn() { tone(660, 0.1, 'square', 0.05); tone(550, 0.1, 'square', 0.05, null, 0.12); },
     select() { tone(660, 0.07, 'square', 0.06); tone(880, 0.09, 'square', 0.06, null, 0.07); },
     start() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.12, 'square', 0.07, null, i * 0.09)); },

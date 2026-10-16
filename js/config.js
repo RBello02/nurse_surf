@@ -31,10 +31,10 @@ const CFG = {
   // Indovinelli delle tre porte. A atCfu la corsa si ferma. Risposta giusta (right: true) = si entra e si prosegue,
   // sbagliata = la porta resta chiusa e l'infermiera fa la puntura (fine partita).
   // kind: 'sleep' | 'talk' | 'eat' (porte con disegno) oppure 'A' | 'B' | 'C' (porte con lettera, per domande scritte).
-  // label: max 9 caratteri. question: una o due righe (max ~26 caratteri). poison: dopo la puntura Martina diventa verde e fuma viola.
+  // label: max 9 caratteri. question: una o due righe (max ~26 caratteri). poison: dopo la puntura Martina diventa Hulk (verde, enorme, sbuffa).
   DOOR: {
     puzzles: [
-      { atCfu: 105, question: ['QUANDO SI DORME?'], poison: false, doors: [
+      { atCfu: 105, question: ['QUANDO SI DORME?'], poison: true, doors: [
         { kind: 'sleep', label: 'SI DORME', right: true }, { kind: 'talk', label: 'SI PARLA' }, { kind: 'eat', label: 'SI MANGIA' }] },
       { atCfu: 125, question: ['UROLOGIA: EMATURIA INDOLORE', 'IN UN FUMATORE DI 60 ANNI.', 'PRIMO SOSPETTO?'], poison: true, doors: [
         { kind: 'A', label: 'VESCICA', right: true }, { kind: 'B', label: 'PROSTATA' }, { kind: 'C', label: 'CALCOLI' }] }

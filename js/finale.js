@@ -8,6 +8,8 @@ function FinaleScene(app, params) {
   const FEET_END = 248, FEET_START = 316;
   const T_WALK = 3.2, T_LOOK = 3.9, T_FLY = 4.9, T_CELEB = 5.8, T_BUTTONS = 7.2;
   const TITLE = CFG.FINALE.title;
+  const caps = [], rings = [];
+  let capT = 0;
   let t = 0, wreathOn = false, flash = 1, shownFanfare = false, nextFirework = 6.2;
   const score = params.score || 0;
   const cfu = params.cfu || 0;
@@ -108,6 +110,82 @@ function FinaleScene(app, params) {
     }
   }
 
+  // ---- scenografia: sipario, fasci di luce, cappelli di laurea, onde dorate ----
+  function drawCurtains(ctx) {
+    const p = Px.ease(Px.clamp((t - 0.3) / 1.4, 0, 1));
+    if (p >= 1) return;
+    const half = CX * (1 - p);
+    for (const side of [0, 1]) {
+      const x0 = side ? W - half : 0;
+      const g = ctx.createLinearGradient(x0, 0, x0 + half, 0);
+      g.addColorStop(0, '#7d1527'); g.addColorStop(0.5, '#c32b44'); g.addColorStop(1, '#7d1527');
+      ctx.fillStyle = g; ctx.fillRect(x0, 0, half, H);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      for (let x = x0 + 6; x < x0 + half; x += 12) ctx.fillRect(x, 0, 3, H);            // pieghe
+      ctx.fillStyle = PAL.gold; ctx.fillRect(side ? x0 : x0 + half - 2, 0, 2, H);       // bordo dorato
+    }
+  }
+
+  function beam(ctx, x0, y0, x1, y1, w1, a, col) {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(x0 - 2, y0); ctx.lineTo(x0 + 2, y0); ctx.lineTo(x1 + w1, y1); ctx.lineTo(x1 - w1, y1); ctx.closePath(); ctx.fill();
+  }
+
+  function drawLights(ctx) {
+    if (t < 0.9) return;
+    const k = Px.clamp((t - 0.9) / 0.8, 0, 1);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const sw = Math.sin(t * 1.3) * 26, focus = t > T_LOOK;
+    // due fari ai lati che puntano sul piedistallo / su Martina
+    const tx = CX, ty = t >= T_FLY ? FEET_END - 40 : 150;
+    beam(ctx, 14, 0, tx - 34 + (focus ? 0 : sw), ty, 22, 0.30 * k, '255,236,170');
+    beam(ctx, W - 14, 0, tx + 34 + (focus ? 0 : -sw), ty, 22, 0.30 * k, '255,236,170');
+    // fascio centrale bianco-caldo, piu' forte quando arriva la corona
+    const c = t >= T_FLY ? 0.5 : (focus ? 0.3 : 0.14);
+    beam(ctx, CX, 0, CX, FEET_END + 6, 30 + (t >= T_FLY ? 12 : 0), c * k, '255,248,214');
+    // pozza di luce sul tappeto
+    const g = ctx.createRadialGradient(CX, FEET_END, 2, CX, FEET_END, 52);
+    g.addColorStop(0, `rgba(255,240,190,${0.45 * k})`); g.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.save(); ctx.translate(0, FEET_END); ctx.scale(1, 0.32); ctx.translate(0, -FEET_END); ctx.fillStyle = g; ctx.fillRect(CX - 56, FEET_END - 56, 112, 112); ctx.restore();
+    // raggi che ruotano dietro Martina dopo l'incoronazione
+    if (t >= T_FLY) {
+      const q = Px.clamp((t - T_FLY) / 0.8, 0, 1), cy = FEET_END - 70;
+      for (let i = 0; i < 14; i++) {
+        const a = t * 0.35 + i * (Math.PI * 2 / 14), r = 120 * q;
+        ctx.fillStyle = `rgba(255,236,150,${0.13 * q})`;
+        ctx.beginPath(); ctx.moveTo(CX, cy); ctx.lineTo(CX + Math.cos(a - 0.07) * r, cy + Math.sin(a - 0.07) * r); ctx.lineTo(CX + Math.cos(a + 0.07) * r, cy + Math.sin(a + 0.07) * r); ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawVignette(ctx) {
+    const g = ctx.createRadialGradient(CX, 190, 70, CX, 190, 230);
+    g.addColorStop(0, 'rgba(20,6,24,0)'); g.addColorStop(1, `rgba(20,6,24,${t < T_FLY ? 0.5 : 0.28})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  function capShape(ctx, x, y, rot, sc) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(sc, sc);
+    ctx.fillStyle = '#1b1f2a'; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(0, -4); ctx.lineTo(9, 0); ctx.lineTo(0, 4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#2d3342'; ctx.fillRect(-4, 3, 8, 3);
+    ctx.strokeStyle = PAL.gold; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(7, 3); ctx.lineTo(7, 7); ctx.stroke();
+    ctx.fillStyle = PAL.gold; ctx.fillRect(6, 6, 2, 3);
+    ctx.restore();
+  }
+
+  function updateCaps(dt) {
+    if (t > T_CELEB && t < T_CELEB + 3.2) {                // lancio dei cappelli
+      capT -= dt;
+      if (capT <= 0) { capT = 0.12; caps.push({ x: 20 + Math.random() * (W - 40), y: 150 + Math.random() * 120, vx: (Math.random() - 0.5) * 30, vy: -(130 + Math.random() * 90), r: Math.random() * 6, vr: (Math.random() - 0.5) * 9, life: 0 }); }
+    }
+    for (const c of caps) { c.life += dt; c.vy += 150 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.r += c.vr * dt; }
+    while (caps.length && caps[0].y > H + 20 && caps[0].vy > 0) caps.shift();
+    for (const r of rings) r.t += dt;
+  }
+
   // ---- animazione ----
   function heroState() {
     let feet = FEET_END, pose = 'stand', lift = 0;
@@ -137,9 +215,11 @@ function FinaleScene(app, params) {
     t += dt;
     flash = Math.max(0, flash - dt * 2.2);
     fx.update(dt);
+    updateCaps(dt);
     if (t > T_LOOK - 0.7 && t < T_FLY && Math.random() < dt * 14) fx.burst(CX + (Math.random() - 0.5) * 28, 136, ['#fff3b0', '#ffffff'], 1, 14, 0.5, -10);
     if (t >= T_FLY && !wreathOn) {
       wreathOn = true; flash = 1;
+      rings.push({ t: 0 }, { t: -0.18 }, { t: -0.36 });
       fx.burst(CX, FEET_END - 78, ['#fff3b0', '#ffffff', PAL.gold, '#7ee08f'], 36, 85, 0.9, 50, 1.5);
       if (!shownFanfare) { shownFanfare = true; Sfx.fanfare(); }
     }
@@ -171,6 +251,11 @@ function FinaleScene(app, params) {
   }
 
   function render(ctx) {
+    // spinta di camera: piu' vicino mentre la corona scende su Martina
+    const zin = t < T_LOOK ? 0 : (t < T_CELEB ? Px.ease(Px.clamp((t - T_LOOK) / (T_FLY - T_LOOK + 0.4), 0, 1)) : 1 - Px.ease(Px.clamp((t - T_CELEB) / 1.4, 0, 1)) * 0.9);
+    const zoom = 1 + 0.10 * zin;
+    ctx.save();
+    ctx.translate(CX, FEET_END - 60); ctx.scale(zoom, zoom); ctx.translate(-CX, -(FEET_END - 60));
     drawHall(ctx);
     drawCrowd(ctx);
 
@@ -190,11 +275,32 @@ function FinaleScene(app, params) {
     ctx.fillRect(CX - sh / 2, hs.feet - 2, sh, 4);
     Hero.draw(ctx, outfit, hs.pose, CX, hs.feet - hs.lift + 1, HK, { wreath: wreathOn });
 
-    // corona in volo
+    // corona in volo (con scia luminosa)
     const wp = wreathPos();
-    if (wp.show) Px.blit(ctx, wreathImg, wp.x, wp.y + Px.lh(wreathImg) * 0.25 * wp.k, wp.k);
+    if (wp.show) {
+      if (t > T_LOOK - 0.7) {
+        const gl = ctx.createRadialGradient(wp.x, wp.y + 6, 1, wp.x, wp.y + 6, 24 * wp.k);
+        gl.addColorStop(0, 'rgba(255,240,170,0.6)'); gl.addColorStop(1, 'rgba(255,240,170,0)');
+        ctx.fillStyle = gl; ctx.fillRect(wp.x - 26, wp.y - 20, 52, 52);
+      }
+      Px.blit(ctx, wreathImg, wp.x, wp.y + Px.lh(wreathImg) * 0.25 * wp.k, wp.k);
+    }
 
+    // riflesso sul tappeto lucido
+    ctx.save(); ctx.globalAlpha = 0.16; ctx.translate(CX, hs.feet + 2); ctx.scale(1, -0.35);
+    Hero.draw(ctx, outfit, hs.pose, 0, 0, HK, { wreath: wreathOn }); ctx.restore();
+
+    drawLights(ctx);
+    // onde d'urto dorate
+    for (const r of rings) if (r.t > 0) {
+      const rr = r.t * 150, a = Math.max(0, 0.7 - r.t * 0.9);
+      if (a > 0) { ctx.strokeStyle = `rgba(255,226,122,${a})`; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.ellipse(CX, FEET_END - 60, rr, rr * 0.75, 0, 0, Math.PI * 2); ctx.stroke(); }
+    }
+    for (const c of caps) capShape(ctx, c.x, c.y, c.r, 1);
     fx.draw(ctx);
+    ctx.restore();
+    drawVignette(ctx);
+    drawCurtains(ctx);
     drawTitle(ctx);
 
     if (t > T_BUTTONS) {

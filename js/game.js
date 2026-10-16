@@ -138,40 +138,75 @@ function GameScene(app, outfit) {
     } else {
       once('bump', 0.7, () => { Sfx.hit(); g.shake = 0.3; });
       once('warn', 1.5, () => Sfx.warn());
+      once('roar', 4.7, () => { Sfx.roar(); g.shake = 0.7; g.flash = 0.3; fx.burst(d.hx, HERO_DOOR_FEET - 30, ['#ffffff', '#2c2c34', '#7ee08f', '#6e32aa'], 36, 120, 0.8, 80); });
       once('stab', 2.95, () => { d.stabbed = true; g.flash = 0.35; g.shake = 0.5; Sfx.hit(); fx.burst(d.hx, HERO_DOOR_FEET - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
       const END = d.poison ? 7.0 : 4.5;
       if (d.t >= END) { g.hits = CFG.MAX_HITS; g.phase = 'caught'; g.phaseT = 1.5; g.door = null; g.gapTarget = -0.2; Sfx.stopMusic(); finish(); }
     }
   }
 
-  // Martina avvelenata: sprite tinto di verde a 6 livelli (con cache) e fumo viola che sale
+  // Martina-Hulk: pelle verde a 6 livelli, pantaloncini viola strappati (cache)
   const greenCache = new Map();
   function greenImg(img, lvl) {
     if (!lvl) return img;
     let arr = greenCache.get(img);
     if (!arr) greenCache.set(img, (arr = []));
     if (!arr[lvl]) {
+      const a = Math.min(0.62, 0.11 * lvl + 0.08);
       arr[lvl] = Px.make(img.width, img.height, (c) => {
         c.drawImage(img, 0, 0);
         c.globalCompositeOperation = 'source-atop';
-        c.fillStyle = `rgba(70,220,70,${0.08 * lvl + 0.1})`;
-        c.fillRect(0, 0, img.width, img.height);
+        const gr = c.createLinearGradient(0, 0, img.width, 0);
+        gr.addColorStop(0, `rgba(120,235,90,${a})`); gr.addColorStop(1, `rgba(30,140,55,${a})`);
+        c.fillStyle = gr; c.fillRect(0, 0, img.width, img.height);
+        if (lvl >= 4) {                                      // pantaloncini viola da Hulk
+          c.fillStyle = `rgba(110,50,170,${0.35 + 0.1 * lvl})`;
+          c.fillRect(0, img.height * 0.55, img.width, img.height * 0.17);
+        }
       }, true);
       arr[lvl].__lw = Px.lw(img); arr[lvl].__lh = Px.lh(img); arr[lvl].__S = img.__S;
     }
     return arr[lvl];
   }
 
+  // Disegna Martina trasformata: amt 0..1 (verde + crescita muscolosa), roar = scossa
+  function drawHulk(ctx, pose, x, y, k, amt, t) {
+    const lvl = amt <= 0 ? 0 : Math.min(6, Math.floor(amt * 5.99) + 1);
+    const img = greenImg(Hero.get(outfit, pose), lvl);
+    const e = Px.ease(amt);
+    const pulse = amt >= 1 ? Math.sin(t * 9) * 0.015 : 0;
+    ctx.save();
+    ctx.translate(x + (amt >= 1 ? Math.sin(t * 40) * 0.5 : 0), y);
+    ctx.scale(1 + 0.42 * e + pulse, 1 + 0.2 * e - pulse);
+    Px.blit(ctx, img, 0, 0, k);
+    if (amt > 0.35) {                                          // muscoli da Hulk: spalle, bicipiti, pugni e sopracciglia arrabbiate
+      const h0 = Px.lh(img) * k, w0 = Px.lw(img) * k, m = Px.clamp((amt - 0.35) / 0.5, 0, 1);
+      const flex = amt >= 1 ? Math.sin(t * 9) * 0.04 : 0;
+      for (const sd of [-1, 1]) {
+        const sx = sd * w0 * 0.15, sy = -h0 * 0.56;
+        const gr = ctx.createRadialGradient(sx - sd * 2, sy - 2, 1, sx, sy, w0 * 0.11 * m);
+        gr.addColorStop(0, '#9af07a'); gr.addColorStop(0.7, '#3fa84e'); gr.addColorStop(1, '#1f6a33');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(sx, sy, w0 * 0.10 * m, h0 * (0.065 + flex) * m, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(sd * w0 * 0.22, -h0 * 0.33, w0 * 0.08 * m, h0 * 0.07 * m, sd * 0.2, 0, Math.PI * 2); ctx.fill();   // avambraccio / pugno
+        ctx.strokeStyle = 'rgba(15,60,30,0.7)'; ctx.lineWidth = 0.6; ctx.stroke();
+      }
+      ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';        // sopracciglia aggrottate
+      const ey = -h0 * 0.80;
+      ctx.beginPath(); ctx.moveTo(-w0 * 0.10, ey - 1.5); ctx.lineTo(-w0 * 0.02, ey + 1); ctx.moveTo(w0 * 0.10, ey - 1.5); ctx.lineTo(w0 * 0.02, ey + 1); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function drawSmoke(ctx, d, hx, feet, k, sp) {
     if (g.frameT % 0.05 < 0.017 || d.smoke.length < 3) {
       const rate = Px.clamp((sp - 0.7) / 1.5, 0.2, 1);
-      if (Math.random() < rate) d.smoke.push({ x: hx + (Math.random() - 0.5) * 20 * k / 1.25, y: feet - 20 - Math.random() * 28, vx: (Math.random() - 0.5) * 8, vy: -(14 + Math.random() * 16), r: 3 + Math.random() * 3, age: 0, life: 1.4 + Math.random() * 0.8, c: ['#8e5bd1', '#b48ae6', '#5f3a96'][(Math.random() * 3) | 0] });
+      if (Math.random() < rate) d.smoke.push({ x: hx + (Math.random() < 0.5 ? -1 : 1) * (22 + Math.random() * 8) * k / 1.25, y: feet - 30 - Math.random() * 30, vx: (Math.random() - 0.5) * 8, vy: -(14 + Math.random() * 16), r: 3 + Math.random() * 3, age: 0, life: 1.4 + Math.random() * 0.8, c: ['#7ee08f', '#4fb866', '#2f8a46'][(Math.random() * 3) | 0] });
     }
     const dt = 1 / 60;
     for (const q of d.smoke) { q.age += dt; q.x += (q.vx + Math.sin(q.age * 5 + q.y) * 6) * dt; q.y += q.vy * dt; q.r += dt * 5; }
     d.smoke = d.smoke.filter((q) => q.age < q.life);
     for (const q of d.smoke) {
-      ctx.globalAlpha = Px.clamp(0.95 * (1 - q.age / q.life), 0, 0.95);
+      ctx.globalAlpha = Px.clamp(0.4 * (1 - q.age / q.life), 0, 0.4);
       Px.ell(ctx, q.x, q.y, q.r, q.r * 0.85, q.c);
     }
     ctx.globalAlpha = 1;
@@ -244,8 +279,9 @@ function GameScene(app, outfit) {
     ctx.globalAlpha = alpha;
     const sp0 = d.stabbed ? d.t - 2.95 : -1;
     if (d.poison && sp0 > 0.9) { pose = 'stand'; hx += Math.sin(d.t * 9) * 1.2; feet -= Math.abs(Math.sin(d.t * 7)) * 1.2; }
-    const greenLvl = d.poison && sp0 > 0.5 ? Math.min(6, Math.floor((sp0 - 0.5) / 1.3 * 6) + 1) : 0;
-    Px.blit(ctx, greenImg(Hero.get(outfit, pose), greenLvl), hx, feet, k);
+    const amt = d.poison && sp0 > 0.5 ? Px.clamp((sp0 - 0.5) / 1.6, 0, 1) : 0;
+    drawHulk(ctx, pose, hx, feet, k, amt, g.frameT);
+    if (amt >= 1 && sp0 < 2.6) { ctx.strokeStyle = `rgba(160,255,150,${0.6 - (sp0 - 2.1) * 1.2})`; ctx.lineWidth = 2; const r = (sp0 - 2.1) * 90; if (r > 0) { ctx.beginPath(); ctx.ellipse(hx, feet - 8, r, r * 0.3, 0, 0, Math.PI * 2); ctx.stroke(); } }
     ctx.globalAlpha = 1;
     if (d.poison && sp0 > 0.7) drawSmoke(ctx, d, hx, feet, k, sp0);
     // infermiera che arriva con la siringa
@@ -270,7 +306,7 @@ function GameScene(app, outfit) {
         const sp = d.t - 2.95;
         if (sp < 1.2) Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff');
         if (sp > 0.5 && sp < 1.4) Px.text(ctx, 'PUNTURA!', 90, 112, PAL.gold, 5, 'center', PAL.ink);
-        if (d.poison && sp > 1.6 && sp < 3.2) Px.text(ctx, Math.floor(sp * 3) % 2 ? 'COF COF!' : 'BLEAH...', hx, feet - 72, '#7ee08f', 3, 'center', PAL.ink);
+        if (d.poison && sp > 1.7 && sp < 4.0) Px.text(ctx, sp > 2.3 ? 'MARTINA-HULK!' : 'GRRR...', 90, feet - 84 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), '#7ee08f', sp > 2.3 ? 4 : 3, 'center', PAL.ink);
       }
     }
     const T_FADE = d.poison ? 6.4 : 3.9;
@@ -315,7 +351,7 @@ function GameScene(app, outfit) {
     Sfx.hit();
     fx.burst(World.laneXf(g.laneF, 1), PY - 26, ['#ffd23f', '#ffffff', '#e0344b'], 18, 80, 0.5, 120);
     if (g.hits >= CFG.MAX_HITS) {
-      g.phase = 'caught'; g.phaseT = 0; g.gapTarget = -0.2; g.jumpT = 0; g.slideT = 0;
+      g.phase = 'caught'; g.roared = false; g.phaseT = 0; g.gapTarget = -0.2; g.jumpT = 0; g.slideT = 0;
       Sfx.stopMusic();
     }
   }
@@ -362,6 +398,7 @@ function GameScene(app, outfit) {
       g.speed = Math.max(0, g.speed - dt * 3);
       st.T += g.speed * dt;
       g.gapV += (g.gapTarget - g.gapV) * Math.min(1, dt * 5);
+      if (g.phaseT > 0.6 && !g.roared) { g.roared = true; Sfx.roar(); g.shake = 0.5; g.flash = 0.25; fx.burst(World.laneXf(g.laneF, 1), PY - 30, ['#ffffff', '#7ee08f', '#2c2c34'], 28, 100, 0.8, 60); }
       if (g.phaseT > 1.5) finish();
       return;
     }
@@ -497,6 +534,11 @@ function GameScene(app, outfit) {
     else if (jh > 0.5) pose = 'jump';
     else pose = Hero.run(g.frameT, 12).pose;
     Gfx.softShadow(ctx, x, PY, Math.max(8, 17 - jh * 0.2), 3.4, 0.4 * (1 - Math.min(0.6, jh / 80)));
+    if (g.phase === 'caught' || g.phase === 'over') {                        // presa dall'infermiera: puntura e... Martina-Hulk
+      const amt = g.phase === 'over' ? 1 : Px.clamp(g.phaseT / 1.2, 0, 1);
+      drawHulk(ctx, 'stand', x, PY + 1, HK, amt, g.frameT);
+      return;
+    }
     if (g.invul > 0 && Math.floor(g.invul * 14) % 2 === 0) return;
     const bob = pose.startsWith('run') ? Hero.run(g.frameT, 12).bob : 0;
     // movimento extra: inclinazione quando cambia corsia, allungamento al salto, schiacciamento all'atterraggio
