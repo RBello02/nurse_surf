@@ -226,7 +226,7 @@ const Hero = (() => {
       if (slide) drawSlide(ctx, outfit, withWreath);
       else drawStanding(ctx, outfit, pose, withWreath);
     }, false, 3);
-    cache[key] = Px.outlined(c);
+    cache[key] = Px.outlined(Px.shade(c));
     return cache[key];
   }
 

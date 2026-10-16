@@ -116,22 +116,71 @@ const Px = (() => {
     return w;
   }
 
-  // Pulsante con bevel. f = dimensione testo. Restituisce il rettangolo per l'hit test.
+  // rettangolo arrotondato (path)
+  function rr(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // pannello "vetro": traslucido con riflesso in alto e bordo luminoso
+  function panel(ctx, x, y, w, h, o = {}) {
+    const r = o.r != null ? o.r : 4;
+    ctx.save();
+    if (o.shadow !== false) { rr(ctx, x, y + 1.2, w, h, r); ctx.fillStyle = 'rgba(5,10,24,0.32)'; ctx.fill(); }
+    rr(ctx, x, y, w, h, r);
+    const g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, o.top || 'rgba(40,58,96,0.78)'); g.addColorStop(1, o.bottom || 'rgba(14,22,44,0.78)');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.clip();
+    const sh = ctx.createLinearGradient(0, y, 0, y + h * 0.5);
+    sh.addColorStop(0, 'rgba(255,255,255,0.20)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sh; ctx.fillRect(x, y, w, h * 0.5);
+    ctx.restore();
+    ctx.save(); rr(ctx, x, y, w, h, r); ctx.strokeStyle = o.stroke || 'rgba(255,255,255,0.28)'; ctx.lineWidth = 0.45; ctx.stroke(); ctx.restore();
+  }
+
+  // Pulsante moderno: rilievo 3D (bordo inferiore), sfumatura, riflesso e ombra morbida.
   function button(ctx, x, y, w, h, label, o = {}) {
-    const base = o.color || '#3bb273';
-    const dark = o.dark || '#26875a';
-    const light = o.light || '#6fd9a2';
-    const dy = o.pressed ? 1 : 0;
-    rect(ctx, x, y + 2, w, h, PAL.ink);
-    rect(ctx, x, y + dy, w, h, PAL.ink);
-    rect(ctx, x + 1, y + 1 + dy, w - 2, h - 2, base);
-    rect(ctx, x + 1, y + 1 + dy, w - 2, 1, light);
-    rect(ctx, x + 1, y + h - 2.5 + dy, w - 2, 1.5, dark);
+    const base = o.color || '#3bb273', dark = o.dark || '#26875a', light = o.light || '#6fd9a2';
+    const lip = Math.min(3, h * 0.16), r = Math.min(6, h * 0.34), dy = o.pressed ? lip * 0.7 : 0;
+    ctx.save();
+    rr(ctx, x - 0.5, y + lip + 1.8, w + 1, h, r + 0.5); ctx.fillStyle = 'rgba(5,10,24,0.34)'; ctx.fill();   // ombra
+    rr(ctx, x, y + lip, w, h, r); ctx.fillStyle = dark; ctx.fill();                                      // spessore
+    const fy = y + dy;
+    rr(ctx, x, fy, w, h, r);
+    const g = ctx.createLinearGradient(0, fy, 0, fy + h);
+    g.addColorStop(0, light); g.addColorStop(0.55, base); g.addColorStop(1, dark);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.save(); rr(ctx, x, fy, w, h, r); ctx.clip();
+    const sh = ctx.createLinearGradient(0, fy, 0, fy + h * 0.5);
+    sh.addColorStop(0, 'rgba(255,255,255,0.42)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sh; ctx.fillRect(x, fy, w, h * 0.5);
+    ctx.restore();
+    rr(ctx, x, fy, w, h, r); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 0.4; ctx.stroke();
+    ctx.restore();
     if (label) {
       const f = o.f || 2;
-      text(ctx, label, x + w / 2, y + (h - 7 * f * 0.5) / 2 + dy - 0.5, o.text || '#fff', f, 'center', dark);
+      text(ctx, label, x + w / 2, fy + (h - 7 * f * 0.5) / 2 - 0.5, o.text || '#fff', f, 'center', dark);
     }
     return { x, y, w, h };
+  }
+
+  // Volume: luce a sinistra/in alto, ombra a destra/in basso, applicata alla sagoma dello sprite (prima del contorno)
+  function shade(src) {
+    const c = make(src.width, src.height, (g) => {
+      g.drawImage(src, 0, 0);
+      g.globalCompositeOperation = 'source-atop';
+      const gx = g.createLinearGradient(0, 0, src.width, 0);
+      gx.addColorStop(0, 'rgba(255,255,255,0.22)'); gx.addColorStop(0.42, 'rgba(255,255,255,0.02)'); gx.addColorStop(1, 'rgba(8,16,56,0.30)');
+      g.fillStyle = gx; g.fillRect(0, 0, src.width, src.height);
+      const gy = g.createLinearGradient(0, 0, 0, src.height);
+      gy.addColorStop(0, 'rgba(255,255,255,0.12)'); gy.addColorStop(0.6, 'rgba(255,255,255,0)'); gy.addColorStop(1, 'rgba(8,16,56,0.20)');
+      g.fillStyle = gy; g.fillRect(0, 0, src.width, src.height);
+    }, true);
+    c.__lw = lw(src); c.__lh = lh(src); c.__S = src.__S || 1;
+    return c;
   }
 
   function hit(r, p, pad = 0) {
@@ -186,5 +235,5 @@ const Px = (() => {
     ctx.drawImage(img, Math.round((x - w / 2) * 4) / 4, Math.round((yBottom - h) * 4) / 4, Math.max(0.25, w), Math.max(0.25, h));
   }
 
-  return { make, lw, lh, rect, ell, line, bev, text, textWidth, button, hit, hash, lerp, clamp, ease, tint, outlined, blit };
+  return { make, lw, lh, rect, rr, panel, shade, ell, line, bev, text, textWidth, button, hit, hash, lerp, clamp, ease, tint, outlined, blit };
 })();

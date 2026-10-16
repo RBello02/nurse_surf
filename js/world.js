@@ -102,6 +102,8 @@ const World = (() => {
         wq(ctx, side, a, b, 0.04, 0.42, th.wallBot);
         wq(ctx, side, a, b, 0.42, 0.47, left ? th.stripeL : th.stripeR);
         wq(ctx, side, a, b, 0, 0.04, th.skirt);
+        wq(ctx, side, a, b, 0.04, 0.16, 'rgba(10,20,40,0.13)'); wq(ctx, side, a, b, 0.04, 0.09, 'rgba(10,20,40,0.12)');   // ombra d'ambiente in basso
+        wq(ctx, side, a, b, 0.9, 1, 'rgba(10,20,40,0.12)');                                                         // e sotto il soffitto
       });
       for (let seg = Math.floor(_w0 / SEG); seg * SEG < _w1; seg++) {
         const wA = seg * SEG, th = themeAt(st, wA + SEG / 2);
@@ -215,6 +217,7 @@ const World = (() => {
     spans(st, _w0, _w1, (a, b, th) => {
       fq(ctx, false, a, b, -WALL, -WALL + 5, th.line); fq(ctx, false, a, b, WALL - 5, WALL, th.line);
     });
+    periodic(1.5, 0.8, (a, b) => spans(st, a, b, (c, d) => { fq(ctx, false, c, d, -14, 14, 'rgba(255,255,255,0.07)'); fq(ctx, false, c, d, -5, 5, 'rgba(255,255,255,0.06)'); }));   // riflesso lucido
     periodic(0.5, 0.6, (a, b) => spans(st, a, b, (c, d, th) => {
       fq(ctx, false, c, d, -28.6, -27.4, th.line); fq(ctx, false, c, d, 27.4, 28.6, th.line);
     }));
@@ -250,5 +253,5 @@ const World = (() => {
     }
   }
 
-  return { render, drawGate, proj, zOf, scrY, laneX, laneXf, CX, WALL, S_MIN, THEMES };
+  return { render, drawGate, proj, zOf, scrY, laneX, laneXf, CEIL, LIGHT_P, CX, WALL, S_MIN, THEMES };
 })();

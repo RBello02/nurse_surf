@@ -345,6 +345,7 @@ function GameScene(app, outfit) {
 
   // ---------- aggiornamento ----------
   function update(dt) {
+    Gfx.track(dt);
     if (g.paused) return;
     g.frameT += dt;
     fx.update(dt);
@@ -451,13 +452,16 @@ function GameScene(app, outfit) {
       const gr = ctx.createRadialGradient(x, gy, 1, x, gy, r);
       gr.addColorStop(0, `rgba(255,226,122,${0.55 * fade})`); gr.addColorStop(1, 'rgba(255,226,122,0)');
       ctx.fillStyle = gr; ctx.fillRect(x - r, gy - r, r * 2, r * 2);
-    } else if (o.p.kind !== 'slide') {                                 // ombra a terra
-      ctx.fillStyle = `rgba(16,21,31,${0.28 * fade})`;
-      ctx.beginPath(); ctx.ellipse(x, y - 0.5 * s, Math.max(4, w * 0.46), Math.max(1.5, 5 * s), 0, 0, Math.PI * 2); ctx.fill();
+    } else if (o.p.kind !== 'slide') {                                 // ombra a terra morbida
+      Gfx.softShadow(ctx, x, y, Math.max(5, w * 0.55), Math.max(1.8, 6 * s), 0.34 * fade);
     }
     ctx.globalAlpha = fade;
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(img, x - w / 2, y - h, w, h);
+    if (o.p.kind === 'pickup') ctx.drawImage(img, x - w / 2, y - h, w, h);
+    else {
+      Gfx.reflect(ctx, img, x, y, w, h, 0.16);
+      Gfx.extrude(ctx, img, x, y, w, h, s);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -483,15 +487,13 @@ function GameScene(app, outfit) {
 
   function drawHero(ctx) {
     const jh = jumpHeight();
-    const x = World.laneXf(g.laneF, 1);
+    const x = World.laneXf(Gfx.smooth(g.laneF), 1);
     let pose;
     if (g.phase === 'caught' || g.phase === 'over') pose = 'stand';
     else if (g.slideT > 0) pose = 'slide';
     else if (jh > 0.5) pose = 'jump';
     else pose = Hero.run(g.frameT, 12).pose;
-    ctx.fillStyle = 'rgba(16,21,31,0.28)';
-    const sw = Math.max(10, 26 - jh * 0.3);
-    ctx.fillRect(x - sw / 2, PY - 1, sw, 2.5);
+    Gfx.softShadow(ctx, x, PY, Math.max(8, 17 - jh * 0.2), 3.4, 0.4 * (1 - Math.min(0.6, jh / 80)));
     if (g.invul > 0 && Math.floor(g.invul * 14) % 2 === 0) return;
     const bob = pose.startsWith('run') ? Hero.run(g.frameT, 12).bob : 0;
     // movimento extra: inclinazione quando cambia corsia, allungamento al salto, schiacciamento all'atterraggio
@@ -499,10 +501,15 @@ function GameScene(app, outfit) {
     let sx = 1, sy = 1;
     if (g.jumpT > 0) { const p = 1 - g.jumpT / CFG.JUMP_TIME; sy = 1 + 0.1 * Math.max(0, 1 - p * 5); sx = 2 - sy; }
     else if (g.landT > 0) { const q = g.landT / 0.14; sy = 1 - 0.13 * q; sx = 1 + 0.12 * q; }
+    const yaw = 1 - Math.min(0.12, Math.abs(g.lane - g.laneF) * 0.14);   // si "gira" un po' cambiando corsia
+    if (Gfx.level >= 1) {                                                   // riflesso sul pavimento lucido
+      ctx.save(); ctx.globalAlpha = 0.17; ctx.translate(x, PY + 1); ctx.scale(sx * yaw, -0.4 * sy); ctx.rotate(-lean);
+      Hero.draw(ctx, outfit, pose, 0, 0, HK); ctx.restore();
+    }
     ctx.save();
     ctx.translate(x, PY - jh + bob + 1);
     ctx.rotate(lean);
-    ctx.scale(sx, sy);
+    ctx.scale(sx * yaw, sy);
     Hero.draw(ctx, outfit, pose, 0, 0, HK);
     ctx.restore();
   }
@@ -567,7 +574,7 @@ function GameScene(app, outfit) {
     // tutorial
     if (g.time < 5 && g.phase === 'run') {
       ctx.globalAlpha = Px.clamp((5 - g.time) / 0.8, 0, 1);
-      Px.rect(ctx, 22, 118, 136, 58, 'rgba(16,21,31,0.62)');
+      Px.panel(ctx, 22, 118, 136, 58, { r: 6 });
       arrow(ctx, 36, 128, 'left', '#fff'); arrow(ctx, 144, 128, 'right', '#fff');
       Px.text(ctx, 'CORSIA', W / 2, 125, '#fff', 2, 'center');
       arrow(ctx, 36, 142, 'up', PAL.gold); Px.text(ctx, 'SALTA', W / 2, 140, PAL.gold, 2, 'center');
@@ -581,7 +588,10 @@ function GameScene(app, outfit) {
   function render(ctx) {
     ctx.save();
     if (g.shake > 0) ctx.translate((Math.random() - 0.5) * 3 * (g.shake / 0.35), (Math.random() - 0.5) * 2 * (g.shake / 0.35));
+    const camX = Px.clamp((g.laneF - 1) * 0.9, -1.6, 1.6);                 // la camera segue appena la corsia
+    ctx.translate(W / 2, H); ctx.rotate(-camX * 0.006); ctx.scale(1.035, 1.035); ctx.translate(-W / 2 - camX * 0.8, -H);
     World.render(ctx, st);
+    Gfx.lights(ctx, st.T, g.zone === 'uni');
     drawAtmosphere(ctx);
     World.drawGate(ctx, st);
     if (g.uniGate) World.drawGate(ctx, st, st.uniStart, CFG.ZONES.uni.gate, { main: '#1f3a7a', hi: '#4a69b0', dark: '#0e1a3d' });
@@ -596,6 +606,7 @@ function GameScene(app, outfit) {
     if (!(g.phase === 'door' && g.door && g.door.result === 'wrong' && g.door.t > 0.7)) drawChaser(ctx);
     if (g.phase === 'door' && g.door) drawDoorScene(ctx);
     fx.draw(ctx);
+    Gfx.speedLines(ctx, g.time, g.speed);
     ctx.restore();
 
     if (g.flash > 0) { ctx.fillStyle = `rgba(255,247,214,${Math.min(1, g.flash * 2)})`; ctx.fillRect(0, 0, W, H); }

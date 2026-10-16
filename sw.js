@@ -2,7 +2,7 @@
 const CACHE = 'nursesurf-v1';
 const FILES = [
   './', './index.html', './manifest.webmanifest', './css/style.css', './icons/icon.svg',
-  './js/config.js', './js/audio.js', './js/sprites.js', './js/hero.js', './js/props.js', './js/doors.js', './js/input.js', './js/fx.js', './js/world.js',
+  './js/config.js', './js/audio.js', './js/sprites.js', './js/hero.js', './js/props.js', './js/doors.js', './js/input.js', './js/fx.js', './js/world.js', './js/gfx.js',
   './js/game.js', './js/intro.js', './js/menu.js', './js/finale.js', './js/main.js'
 ];
 
