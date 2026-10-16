@@ -90,6 +90,13 @@ const Hero = (() => {
       ctx.fillStyle = o.topLo; ctx.fillRect(14, 47, 6, 1); ctx.fillRect(25, 47, 6, 1);                 // tasche
       ctx.fillStyle = '#c8cfd6'; ctx.fillRect(22, 46, 1, 1);                                           // bottone
       ctx.fillStyle = o.topLo; ctx.fillRect(13, 51, 18, 2);
+      // cintura bordeaux in vita con fibbia dorata
+      ctx.fillStyle = '#7a1f35'; ctx.fillRect(13, 45, 18, 3);
+      ctx.fillStyle = '#a63350'; ctx.fillRect(13, 45, 18, 1);
+      ctx.fillStyle = '#4e1222'; ctx.fillRect(13, 47, 18, 1);
+      ctx.fillStyle = '#f6c344'; ctx.fillRect(20, 44, 5, 5);
+      ctx.fillStyle = '#7a1f35'; ctx.fillRect(21, 45, 3, 3);
+      ctx.fillStyle = '#fff3b0'; ctx.fillRect(20, 44, 5, 1);
     } else if (outfit === 'elegante') {
       // tuta salvia con colletto, bottoni, tracolla rossa e borsetta
       Px.bev(ctx, 13, 33, 18, 20, o.top, o.topHi, o.topLo);
@@ -200,6 +207,7 @@ const Hero = (() => {
     // busto inclinato in avanti
     Px.bev(ctx, 12, 32, 20, 13, o.top, o.topHi, o.topLo);
     if (outfit === 'casual') { ctx.fillStyle = H.skin; ctx.fillRect(19, 32, 6, 2); ctx.fillRect(20, 34, 4, 2); ctx.fillRect(21, 36, 2, 2); }
+    if (outfit === 'casual') { ctx.fillStyle = '#7a1f35'; ctx.fillRect(12, 39, 20, 3); ctx.fillStyle = '#a63350'; ctx.fillRect(12, 39, 20, 1); ctx.fillStyle = '#f6c344'; ctx.fillRect(20, 38, 4, 5); ctx.fillStyle = '#7a1f35'; ctx.fillRect(21, 39, 2, 3); }
     if (outfit === 'uniforme') { ctx.fillStyle = '#ffffff'; ctx.fillRect(26, 36, 4, 4); ctx.fillStyle = o.accent; ctx.fillRect(27, 37, 2, 2); }
     // braccia in avanti
     Px.line(ctx, 14, 36, 8, 42, 5, H.skin); Px.ell(ctx, 7, 43, 3, 3, H.skin);
