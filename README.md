@@ -17,8 +17,8 @@ prospettiva, personaggi e ostacoli con bordi morbidi, testo con font arrotondato
 
 ## Gioca subito
 
-**[Apri il gioco](https://rawcdn.githack.com/RBello02/nurse_surf/8621b8b987ebb1d4511e78813846251eed59debc/index.html)**: funziona dal browser del telefono, senza installare nulla
-(link: https://rawcdn.githack.com/RBello02/nurse_surf/8621b8b987ebb1d4511e78813846251eed59debc/index.html).
+**[Apri il gioco](https://rawcdn.githack.com/RBello02/nurse_surf/fdceeeef0b2b241c71679e578924d9abb22d4e93/index.html)**: funziona dal browser del telefono, senza installare nulla
+(link: https://rawcdn.githack.com/RBello02/nurse_surf/fdceeeef0b2b241c71679e578924d9abb22d4e93/index.html).
 Il link e' fissato a una versione precisa: dopo ogni aggiornamento viene rigenerato con `node scripts/update-play-link.js`.
 
 ## Giocare in locale (PC o telefono sulla stessa rete Wi-Fi)
