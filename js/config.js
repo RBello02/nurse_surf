@@ -11,9 +11,9 @@ const CFG = {
   LANE_X_NEAR: [34, 90, 146],
   LANE_X_FAR: [74, 90, 106],
   // Gameplay
-  START_SPEED: 1.0,     // unita' di profondita' al secondo
-  MAX_SPEED: 2.1,
-  SPEED_GAIN: 0.014,    // incremento al secondo
+  START_SPEED: 0.9,     // unita' di profondita' al secondo
+  MAX_SPEED: 1.9,
+  SPEED_GAIN: 0.0125,    // incremento al secondo
   RAMP_TIME: 70,        // secondi per arrivare alla difficolta' massima
   JUMP_TIME: 0.7,
   JUMP_PEAK: 46,        // altezza massima del salto (unita')

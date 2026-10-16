@@ -564,22 +564,22 @@ function GameScene(app, outfit) {
     Px.text(ctx, g.cfu + '/' + CFG.CFU_GOAL + ' CFU', 22, 40, '#ffe27a', 3, 'left', PAL.ink);
     // cartello di benvenuto all'universita'
     if (g.zoneBannerT > 0 && g.phase !== 'door') {
-      ctx.globalAlpha = Px.clamp(g.zoneBannerT / 0.6, 0, 1);
+      ctx.globalAlpha = Px.clamp(g.zoneBannerT / 0.6, 0, 1); ctx.save(); ctx.translate(0, -48);
       Px.rect(ctx, 24, 104, W - 48, 28, 'rgba(16,21,31,0.7)');
       Px.rect(ctx, 24, 104, W - 48, 1.5, '#f6c344'); Px.rect(ctx, 24, 130.5, W - 48, 1.5, '#f6c344');
       Px.text(ctx, 'BENVENUTA', W / 2, 110, '#ffffff', 2, 'center', PAL.ink);
       Px.text(ctx, "ALL'UNIVERSITA'!", W / 2, 121, '#f6c344', 2, 'center', PAL.ink);
-      ctx.globalAlpha = 1;
+      ctx.restore(); ctx.globalAlpha = 1;
     }
     // tutorial
     if (g.time < 5 && g.phase === 'run') {
-      ctx.globalAlpha = Px.clamp((5 - g.time) / 0.8, 0, 1);
+      ctx.globalAlpha = Px.clamp((5 - g.time) / 0.8, 0, 1); ctx.save(); ctx.translate(0, -66);
       Px.panel(ctx, 22, 118, 136, 58, { r: 6 });
       arrow(ctx, 36, 128, 'left', '#fff'); arrow(ctx, 144, 128, 'right', '#fff');
       Px.text(ctx, 'CORSIA', W / 2, 125, '#fff', 2, 'center');
       arrow(ctx, 36, 142, 'up', PAL.gold); Px.text(ctx, 'SALTA', W / 2, 140, PAL.gold, 2, 'center');
       arrow(ctx, 36, 157, 'down', '#7fd3ff'); Px.text(ctx, 'SCIVOLA', W / 2, 155, '#7fd3ff', 2, 'center');
-      ctx.globalAlpha = 1;
+      ctx.restore(); ctx.globalAlpha = 1;
     }
   }
 
