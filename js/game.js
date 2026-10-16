@@ -138,61 +138,49 @@ function GameScene(app, outfit) {
     } else {
       once('bump', 0.7, () => { Sfx.hit(); g.shake = 0.3; });
       once('warn', 1.5, () => Sfx.warn());
-      once('roar', 4.7, () => { Sfx.roar(); g.shake = 0.7; g.flash = 0.3; fx.burst(d.hx, HERO_DOOR_FEET - 30, ['#ffffff', '#2c2c34', '#7ee08f', '#6e32aa'], 36, 120, 0.8, 80); });
+      once('roar', 4.41, () => { Sfx.roar(); g.shake = 0.7; g.flash = 0.3; fx.burst(d.hx, HERO_DOOR_FEET - 30, ['#ffffff', '#2c2c34', '#7ee08f', '#6e32aa'], 36, 120, 0.8, 80); });
       once('stab', 2.95, () => { d.stabbed = true; g.flash = 0.35; g.shake = 0.5; Sfx.hit(); fx.burst(d.hx, HERO_DOOR_FEET - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
       const END = d.poison ? 7.0 : 4.5;
       if (d.t >= END) { g.hits = CFG.MAX_HITS; g.phase = 'caught'; g.phaseT = 1.5; g.door = null; g.gapTarget = -0.2; Sfx.stopMusic(); finish(); }
     }
   }
 
-  // Martina-Hulk: pelle verde a 6 livelli, pantaloncini viola strappati (cache)
+  // Pelle verde a 6 livelli per la fase iniziale della trasformazione (cache)
   const greenCache = new Map();
   function greenImg(img, lvl) {
     if (!lvl) return img;
     let arr = greenCache.get(img);
     if (!arr) greenCache.set(img, (arr = []));
     if (!arr[lvl]) {
-      const a = Math.min(0.62, 0.11 * lvl + 0.08);
+      const a = Math.min(0.7, 0.12 * lvl + 0.1);
       arr[lvl] = Px.make(img.width, img.height, (c) => {
         c.drawImage(img, 0, 0);
         c.globalCompositeOperation = 'source-atop';
         const gr = c.createLinearGradient(0, 0, img.width, 0);
         gr.addColorStop(0, `rgba(120,235,90,${a})`); gr.addColorStop(1, `rgba(30,140,55,${a})`);
         c.fillStyle = gr; c.fillRect(0, 0, img.width, img.height);
-        if (lvl >= 4) {                                      // pantaloncini viola da Hulk
-          c.fillStyle = `rgba(110,50,170,${0.35 + 0.1 * lvl})`;
-          c.fillRect(0, img.height * 0.55, img.width, img.height * 0.17);
-        }
       }, true);
       arr[lvl].__lw = Px.lw(img); arr[lvl].__lh = Px.lh(img); arr[lvl].__S = img.__S;
     }
     return arr[lvl];
   }
 
-  // Disegna Martina trasformata: amt 0..1 (verde + crescita muscolosa), roar = scossa
+  // Martina trasformata: prima trema e diventa verde, poi esplode nel personaggio gigante (sprite dedicato)
+  const SWAP = 0.6;
   function drawHulk(ctx, pose, x, y, k, amt, t) {
-    const lvl = amt <= 0 ? 0 : Math.min(6, Math.floor(amt * 5.99) + 1);
-    const img = greenImg(Hero.get(outfit, pose), lvl);
-    const e = Px.ease(amt);
-    const pulse = amt >= 1 ? Math.sin(t * 9) * 0.015 : 0;
     ctx.save();
-    ctx.translate(x + (amt >= 1 ? Math.sin(t * 40) * 0.5 : 0), y);
-    ctx.scale(1 + 0.42 * e + pulse, 1 + 0.2 * e - pulse);
-    Px.blit(ctx, img, 0, 0, k);
-    if (amt > 0.35) {                                          // muscoli da Hulk: spalle, bicipiti, pugni e sopracciglia arrabbiate
-      const h0 = Px.lh(img) * k, w0 = Px.lw(img) * k, m = Px.clamp((amt - 0.35) / 0.5, 0, 1);
-      const flex = amt >= 1 ? Math.sin(t * 9) * 0.04 : 0;
-      for (const sd of [-1, 1]) {
-        const sx = sd * w0 * 0.15, sy = -h0 * 0.56;
-        const gr = ctx.createRadialGradient(sx - sd * 2, sy - 2, 1, sx, sy, w0 * 0.11 * m);
-        gr.addColorStop(0, '#9af07a'); gr.addColorStop(0.7, '#3fa84e'); gr.addColorStop(1, '#1f6a33');
-        ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(sx, sy, w0 * 0.10 * m, h0 * (0.065 + flex) * m, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(sd * w0 * 0.22, -h0 * 0.33, w0 * 0.08 * m, h0 * 0.07 * m, sd * 0.2, 0, Math.PI * 2); ctx.fill();   // avambraccio / pugno
-        ctx.strokeStyle = 'rgba(15,60,30,0.7)'; ctx.lineWidth = 0.6; ctx.stroke();
-      }
-      ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';        // sopracciglia aggrottate
-      const ey = -h0 * 0.80;
-      ctx.beginPath(); ctx.moveTo(-w0 * 0.10, ey - 1.5); ctx.lineTo(-w0 * 0.02, ey + 1); ctx.moveTo(w0 * 0.10, ey - 1.5); ctx.lineTo(w0 * 0.02, ey + 1); ctx.stroke();
+    if (amt < SWAP) {
+      const q = amt / SWAP, lvl = amt <= 0 ? 0 : Math.min(6, Math.floor(q * 5.99) + 1);
+      const img = greenImg(Hero.get(outfit, pose), lvl);
+      ctx.translate(x + Math.sin(t * 50) * q * 1.2, y);
+      ctx.scale(1 + 0.18 * q, 1 + 0.1 * q);
+      Px.blit(ctx, img, 0, 0, k);
+    } else {
+      const q = Px.clamp((amt - SWAP) / 0.4, 0, 1), pop = 1 + 0.18 * Math.sin(q * Math.PI) * (1 - q * 0.3);
+      const breathe = amt >= 1 ? Math.sin(t * 6) * 0.012 : 0;
+      ctx.translate(x + (amt >= 1 ? Math.sin(t * 38) * 0.35 : 0), y);
+      ctx.scale((0.9 + 0.1 * Px.ease(q)) * pop * (1 - breathe), (0.9 + 0.1 * Px.ease(q)) * pop * (1 + breathe));
+      Px.blit(ctx, Hero.get(outfit, 'big'), 0, 0, k);
     }
     ctx.restore();
   }
@@ -306,7 +294,7 @@ function GameScene(app, outfit) {
         const sp = d.t - 2.95;
         if (sp < 1.2) Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff');
         if (sp > 0.5 && sp < 1.4) Px.text(ctx, 'PUNTURA!', 90, 112, PAL.gold, 5, 'center', PAL.ink);
-        if (d.poison && sp > 1.7 && sp < 4.0) Px.text(ctx, sp > 2.3 ? 'MARTINA-HULK!' : 'GRRR...', 90, feet - 84 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), '#7ee08f', sp > 2.3 ? 4 : 3, 'center', PAL.ink);
+        if (d.poison && sp > 1.7 && sp < 4.0) Px.text(ctx, sp > 2.3 ? 'GRAAAH!' : 'GRRR...', 90, feet - 84 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), '#7ee08f', sp > 2.3 ? 5 : 3, 'center', PAL.ink);
       }
     }
     const T_FADE = d.poison ? 6.4 : 3.9;
@@ -398,7 +386,7 @@ function GameScene(app, outfit) {
       g.speed = Math.max(0, g.speed - dt * 3);
       st.T += g.speed * dt;
       g.gapV += (g.gapTarget - g.gapV) * Math.min(1, dt * 5);
-      if (g.phaseT > 0.6 && !g.roared) { g.roared = true; Sfx.roar(); g.shake = 0.5; g.flash = 0.25; fx.burst(World.laneXf(g.laneF, 1), PY - 30, ['#ffffff', '#7ee08f', '#2c2c34'], 28, 100, 0.8, 60); }
+      if (g.phaseT > 0.72 && !g.roared) { g.roared = true; Sfx.roar(); g.shake = 0.5; g.flash = 0.25; fx.burst(World.laneXf(g.laneF, 1), PY - 30, ['#ffffff', '#7ee08f', '#2c2c34'], 28, 100, 0.8, 60); }
       if (g.phaseT > 1.5) finish();
       return;
     }
@@ -534,7 +522,7 @@ function GameScene(app, outfit) {
     else if (jh > 0.5) pose = 'jump';
     else pose = Hero.run(g.frameT, 12).pose;
     Gfx.softShadow(ctx, x, PY, Math.max(8, 17 - jh * 0.2), 3.4, 0.4 * (1 - Math.min(0.6, jh / 80)));
-    if (g.phase === 'caught' || g.phase === 'over') {                        // presa dall'infermiera: puntura e... Martina-Hulk
+    if (g.phase === 'caught' || g.phase === 'over') {                        // presa dall'infermiera: puntura e trasformazione
       const amt = g.phase === 'over' ? 1 : Px.clamp(g.phaseT / 1.2, 0, 1);
       drawHulk(ctx, 'stand', x, PY + 1, HK, amt, g.frameT);
       return;

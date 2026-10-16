@@ -31,7 +31,7 @@ const CFG = {
   // Indovinelli delle tre porte. A atCfu la corsa si ferma. Risposta giusta (right: true) = si entra e si prosegue,
   // sbagliata = la porta resta chiusa e l'infermiera fa la puntura (fine partita).
   // kind: 'sleep' | 'talk' | 'eat' (porte con disegno) oppure 'A' | 'B' | 'C' (porte con lettera, per domande scritte).
-  // label: max 9 caratteri. question: una o due righe (max ~26 caratteri). poison: dopo la puntura Martina diventa Hulk (verde, enorme, sbuffa).
+  // label: max 9 caratteri. question: una o due righe (max ~26 caratteri). poison: dopo la puntura Martina diventa verde e gigantesca (sprite "big" in hero.js).
   DOOR: {
     puzzles: [
       { atCfu: 105, question: ['QUANDO SI DORME?'], poison: true, doors: [

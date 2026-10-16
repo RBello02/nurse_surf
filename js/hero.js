@@ -6,6 +6,7 @@ const Hero = (() => {
   const H = CFG.HERO;
   const cache = {};
   const HAIR_HI = '#8a6240';
+  const GREEN = { skin: '#62c24c', hi: '#9be873', shade: '#3b8f35', deep: '#276a2b', line: '#1d4f22' };
   const OUT = {
     casual:   { top: '#1c1c23', topHi: '#3a3a46', topLo: '#0c0c11', pants: '#1c1c23', pantsHi: '#3a3a46', pantsLo: '#0c0c11', shoe: '#7a1f35', sole: '#2a1a1e', accent: '#ffffff' },
     elegante: { top: '#8f978c', topHi: '#aab1a5', topLo: '#6e766b', pants: '#8f978c', pantsHi: '#aab1a5', pantsLo: '#6e766b', shoe: '#6b2230', sole: '#2a1a1e', accent: '#b33a3a', bag: '#4a4650' },
@@ -143,8 +144,9 @@ const Hero = (() => {
     ctx.fillStyle = '#a82036'; ctx.fillRect(34, 24, 2, 2); ctx.fillRect(34, 17, 1, 8);
   }
 
-  function head(ctx, withWreath) {
+  function head(ctx, withWreath, angry) {
     const g = ctx;
+    const SK = angry ? GREEN.skin : H.skin, SKS = angry ? GREEN.shade : H.skinShade, SKH = angry ? GREEN.hi : '#f7d9bd';
     const path = (fn, fill, stroke, lw) => { g.beginPath(); fn(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 1; g.lineJoin = 'round'; g.lineCap = 'round'; g.stroke(); } };
     // capelli raccolti dietro la testa, chignon alto, ciocche che incorniciano il viso
     Px.ell(g, 22, 16, 13, 13.5, H.hair);
@@ -156,10 +158,10 @@ const Hero = (() => {
     path(() => { g.moveTo(32.4, 24); g.quadraticCurveTo(33.2, 30, 31.8, 34); }, null, H.hairShade, 1.2);
     path(() => { g.moveTo(13, 21); g.quadraticCurveTo(12.3, 26, 13, 30); }, null, HAIR_HI, 0.7);
     // collo e viso
-    Px.ell(g, 22, 31, 3.2, 3.2, H.skinShade);
-    Px.ell(g, 22, 20.5, 9, 10.2, H.skin);
-    Px.ell(g, 26.5, 23, 3.6, 7, H.skinShade); Px.ell(g, 22, 20.2, 8.4, 10, H.skin); Px.ell(g, 22, 18.5, 7, 7.5, '#f7d9bd');   // luce e ombra sul volto
-    Px.ell(g, 22, 18.6, 6.6, 7.0, H.skin);
+    Px.ell(g, 22, 31, 3.2, 3.2, SKS);
+    Px.ell(g, 22, 20.5, 9, 10.2, SK);
+    Px.ell(g, 26.5, 23, 3.6, 7, SKS); Px.ell(g, 22, 20.2, 8.4, 10, SK); Px.ell(g, 22, 18.5, 7, 7.5, SKH);   // luce e ombra sul volto
+    Px.ell(g, 22, 18.6, 6.6, 7.0, SK);
     // frangia laterale morbida, piu' lunga a sinistra
     Px.ell(g, 22, 12.5, 11.5, 7.5, H.hair);
     path(() => { g.moveTo(10.6, 12); g.lineTo(33.4, 12); g.lineTo(33.4, 16.5); g.quadraticCurveTo(27, 15.2, 21.5, 18.6); g.quadraticCurveTo(15.5, 22.2, 11.2, 22.6); g.closePath(); }, H.hair);
@@ -177,12 +179,25 @@ const Hero = (() => {
       path(() => { g.moveTo(cx - 2.9, 21.6); g.quadraticCurveTo(cx, 19.6, cx + 2.9, 21.6); }, null, '#2a1810', 0.9);
       path(() => { g.moveTo(cx + side * 2.8, 21.4); g.lineTo(cx + side * 3.8, 20.4); }, null, '#2a1810', 0.8);
     }
+    if (angry) {
+      path(() => { g.moveTo(13.6, 16.6); g.lineTo(20.8, 20.2); }, null, '#2a1810', 1.8);
+      path(() => { g.moveTo(30.4, 16.6); g.lineTo(23.2, 20.2); }, null, '#2a1810', 1.8);
+    } else {
     path(() => { g.moveTo(14.2, 18.4); g.quadraticCurveTo(17, 16.3, 20.4, 17.6); }, null, '#3b2417', 1.0);
     path(() => { g.moveTo(23.6, 17.6); g.quadraticCurveTo(27, 16.3, 29.8, 18.4); }, null, '#3b2417', 1.0);
+    }
     // naso, guance, bocca sorridente
-    path(() => { g.moveTo(22.3, 22.5); g.quadraticCurveTo(21.6, 25, 22.8, 25.6); }, null, H.skinShade, 0.7);
+    path(() => { g.moveTo(22.3, 22.5); g.quadraticCurveTo(21.6, 25, 22.8, 25.6); }, null, SKS, 0.7);
+    if (angry) {                                                         // urlo: bocca spalancata con i denti
+      path(() => { g.moveTo(17.2, 27.4); g.quadraticCurveTo(22, 26.4, 26.8, 27.4); g.quadraticCurveTo(26, 33.6, 22, 33.8); g.quadraticCurveTo(18, 33.6, 17.2, 27.4); g.closePath(); }, '#4a0d12', '#1f1a17', 0.8);
+      g.fillStyle = '#ffffff'; g.fillRect(18.6, 27.4, 6.8, 1.8); g.fillRect(19.4, 31.8, 5.2, 1.3);
+      Px.ell(g, 22, 32.2, 2.2, 1.1, '#b3263e');
+      path(() => { g.moveTo(15, 24.6); g.quadraticCurveTo(14.2, 26.4, 15.6, 27.6); }, null, SKS, 0.7);
+      path(() => { g.moveTo(29, 24.6); g.quadraticCurveTo(29.8, 26.4, 28.4, 27.6); }, null, SKS, 0.7);
+    } else {
     Px.ell(g, 16.2, 26.6, 2.3, 1.3, 'rgba(241,140,130,0.55)'); Px.ell(g, 28.2, 26.6, 2.3, 1.3, 'rgba(241,140,130,0.55)');
     path(() => { g.moveTo(18.8, 28.8); g.quadraticCurveTo(22.2, 31.6, 25.8, 28.8); g.quadraticCurveTo(22.2, 29.8, 18.8, 28.8); }, '#ffffff', '#b4504f', 0.8);
+    }
     if (withWreath) wreath(ctx);
   }
 
@@ -191,6 +206,74 @@ const Hero = (() => {
     torso(ctx, outfit);
     arms(ctx, outfit, pose);
     head(ctx, withWreath);
+  }
+
+  // Martina trasformata: gigante, muscolosa, pelle verde, vestiti strappati (canvas 90x100)
+  function drawBig(ctx, outfit, withWreath) {
+    const o = OUT[outfit], G = GREEN, cx = 45;
+    ctx.save(); ctx.translate(10, 0);
+    const E = (x, y, rx, ry, c) => Px.ell(ctx, x, y, rx, ry, c);
+    const arcLine = (x0, y0, x1, y1, qx, qy, w, c) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(qx, qy, x1, y1); ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.stroke(); };
+    // piedi nudi (le scarpe sono saltate) e polpacci
+    for (const sd of [-1, 1]) {
+      const x = cx + sd * 12;
+      Px.line(ctx, x, 86, x + sd * 1, 95, 13, G.skin);
+      Px.line(ctx, x - 4, 86, x - 4, 95, 2, G.hi);
+      E(x + sd * 1, 97, 10, 3.6, G.skin); E(x + sd * 1, 98.2, 10, 1.8, G.shade);
+      for (let i = -1; i <= 1; i++) E(x + sd * 1 + i * 3.6 + sd * 3, 98, 1.4, 1.4, G.hi);   // dita
+    }
+    // pantaloni neri strappati al ginocchio: cosce enormi
+    for (const sd of [-1, 1]) {
+      const x = cx + sd * 11.5;
+      Px.line(ctx, x, 70, x + sd * 1.5, 86, 22, o.pants);
+      Px.line(ctx, x - 6, 71, x - 6 + sd * 1, 85, 2, o.pantsHi);
+      Px.line(ctx, x + 7, 72, x + 7, 86, 2, o.pantsLo);
+      ctx.fillStyle = o.pants;                                                              // bordo sfilacciato
+      for (let i = -9; i <= 9; i += 4.5) { ctx.beginPath(); ctx.moveTo(x + i - 2.2, 85); ctx.lineTo(x + i + 2.2, 85); ctx.lineTo(x + i + (i % 9 ? 1 : -1), 90 + ((i * 7) & 3)); ctx.closePath(); ctx.fill(); }
+    }
+    // torso a V: spalle larghissime, vita stretta
+    ctx.beginPath(); ctx.moveTo(8, 47); ctx.quadraticCurveTo(14, 38, 31, 39); ctx.lineTo(59, 39); ctx.quadraticCurveTo(76, 38, 82, 47);
+    ctx.quadraticCurveTo(76, 64, 62, 72); ctx.lineTo(28, 72); ctx.quadraticCurveTo(14, 64, 8, 47); ctx.closePath(); ctx.fillStyle = G.skin; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(60, 40); ctx.quadraticCurveTo(76, 40, 82, 47); ctx.quadraticCurveTo(77, 63, 63, 72); ctx.lineTo(70, 72); ctx.quadraticCurveTo(80, 62, 83, 48); ctx.closePath(); ctx.fillStyle = G.shade; ctx.fill();
+    E(cx, 43, 21, 7, G.skin); E(cx - 13, 41.5, 9, 4.5, G.hi);  E(cx + 13, 41.5, 9, 4.5, G.skin);                              // trapezi
+    // pettorali
+    for (const sd of [-1, 1]) {
+      E(cx + sd * 12, 55, 13, 9.5, G.skin); E(cx + sd * 11, 52.8, 10, 6, sd < 0 ? G.hi : G.skin);
+      arcLine(cx + sd * 1, 60, cx + sd * 23, 61.5, cx + sd * 12, 66, 1.3, G.deep);
+    }
+    arcLine(cx, 48, cx, 70, cx + 1, 60, 1.2, G.deep);                                                                          // linea centrale
+    for (let r = 0; r < 3; r++) for (const sd of [-1, 1]) { Px.rect(ctx, cx + sd * 5 - 3, 62 + r * 3.4, 6, 2.6, r === 0 ? G.hi : G.skin); arcLine(cx + sd * 5 - 3, 64.8 + r * 3.4, cx + sd * 5 + 3, 64.8 + r * 3.4, cx + sd * 5, 66 + r * 3.4, 0.8, G.deep); }  // addominali
+    arcLine(cx - 16, 58, cx - 22, 68, cx - 21, 62, 1, G.deep); arcLine(cx + 16, 58, cx + 22, 68, cx + 21, 62, 1, G.deep);     // dorsali
+    // brandelli del blazer nero sulle spalle e in vita
+    ctx.fillStyle = o.top;
+    ctx.beginPath(); ctx.moveTo(10, 44); ctx.lineTo(28, 40); ctx.lineTo(25, 47); ctx.lineTo(27, 52); ctx.lineTo(21, 49); ctx.lineTo(18, 56); ctx.lineTo(14, 49); ctx.lineTo(8, 51); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(80, 44); ctx.lineTo(62, 40); ctx.lineTo(65, 47); ctx.lineTo(63, 53); ctx.lineTo(69, 50); ctx.lineTo(72, 57); ctx.lineTo(76, 50); ctx.lineTo(82, 52); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = o.topHi; ctx.fillRect(12, 43, 11, 1.4); ctx.fillRect(67, 43, 11, 1.4);
+    ctx.fillStyle = o.top;
+    ctx.beginPath(); ctx.moveTo(cx - 10, 41); ctx.lineTo(cx - 3, 40); ctx.lineTo(cx - 7, 49); ctx.closePath(); ctx.fill();                  // risvolti rimasti al collo
+    ctx.beginPath(); ctx.moveTo(cx + 10, 41); ctx.lineTo(cx + 3, 40); ctx.lineTo(cx + 7, 49); ctx.closePath(); ctx.fill();
+    // cintura (bordeaux nel vestito di laurea) con fibbia
+    const belt = outfit === 'casual' ? '#7a1f35' : o.pantsLo;
+    ctx.fillStyle = belt; ctx.fillRect(cx - 19, 68, 38, 5); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(cx - 19, 68, 38, 1.3);
+    if (outfit === 'casual') { ctx.fillStyle = '#f6c344'; ctx.fillRect(cx - 4, 67, 8, 7); ctx.fillStyle = '#7a1f35'; ctx.fillRect(cx - 2.5, 68.5, 5, 4); ctx.fillStyle = '#fff3b0'; ctx.fillRect(cx - 4, 67, 8, 1.2); }
+    ctx.fillStyle = o.pants;                                                                                                  // vita pantaloni
+    ctx.beginPath(); ctx.moveTo(cx - 20, 72); ctx.lineTo(cx + 20, 72); ctx.lineTo(cx + 18, 76); ctx.lineTo(cx, 74); ctx.lineTo(cx - 18, 76); ctx.closePath(); ctx.fill();
+    // braccia enormi: deltoide, bicipite, avambraccio, pugno chiuso
+    for (const sd of [-1, 1]) {
+      const sx = cx + sd * 35, hi = sd < 0;
+      E(sx, 50, 12, 13, hi ? G.hi : G.skin); E(sx + sd * 1.5, 54, 10, 10, G.skin);                                           // deltoide
+      Px.line(ctx, sx, 56, sx + sd * 4, 72, 17, G.skin);                                                                       // braccio
+      E(sx - sd * 1, 64, 9.5, 10.5, hi ? G.hi : G.skin);                                                                       // bicipite
+      arcLine(sx + sd * 5, 56, sx + sd * 8, 70, sx + sd * 9, 63, 1.3, G.deep);
+      Px.line(ctx, sx + sd * 4, 72, sx + sd * 7, 88, 13, G.skin);                                                              // avambraccio
+      Px.line(ctx, sx + sd * 2, 73, sx + sd * 5, 86, 2, G.hi);
+      E(sx + sd * 8, 91, 9, 8.5, G.skin); E(sx + sd * 8, 93, 9, 6, G.shade);                                                   // pugno
+      for (let i = 0; i < 3; i++) arcLine(sx + sd * (4 + i * 3.4), 88, sx + sd * (4 + i * 3.4), 94, sx + sd * (3.4 + i * 3.4), 91, 0.8, G.deep);
+      ctx.fillStyle = o.top; ctx.fillRect(sx + sd * 4 - 7, 77, 14, 2); ctx.fillRect(sx + sd * 4 - 5, 79, 3, 4);                // fascia di stoffa rimasta al polso
+    }
+    // testa: stessa Martina, arrabbiata
+    ctx.save(); ctx.translate(cx - 22 * 1.12, -2); ctx.scale(1.12, 1.12); head(ctx, withWreath, true); ctx.restore();
+    ctx.restore();
   }
 
   // Scivolata: Martina si accovaccia e scivola sotto il cartello (canvas 60x52)
@@ -221,9 +304,10 @@ const Hero = (() => {
   function get(outfit, pose, withWreath = false) {
     const key = `${outfit}|${pose}|${withWreath ? 1 : 0}`;
     if (cache[key]) return cache[key];
-    const slide = pose === 'slide';
-    const c = Px.make(slide ? 60 : 44, slide ? 52 : 80, (ctx) => {
-      if (slide) drawSlide(ctx, outfit, withWreath);
+    const slide = pose === 'slide', big = pose === 'big';
+    const c = Px.make(big ? 110 : (slide ? 60 : 44), big ? 100 : (slide ? 52 : 80), (ctx) => {
+      if (big) drawBig(ctx, outfit, withWreath);
+      else if (slide) drawSlide(ctx, outfit, withWreath);
       else drawStanding(ctx, outfit, pose, withWreath);
     }, false, 3);
     cache[key] = Px.outlined(Px.shade(c));
