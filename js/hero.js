@@ -146,6 +146,7 @@ const Hero = (() => {
 
   function head(ctx, withWreath, angry) {
     const g = ctx;
+    const hen = angry === 'hen'; if (hen) angry = false;
     const SK = angry ? GREEN.skin : H.skin, SKS = angry ? GREEN.shade : H.skinShade, SKH = angry ? GREEN.hi : '#f7d9bd';
     const path = (fn, fill, stroke, lw) => { g.beginPath(); fn(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 1; g.lineJoin = 'round'; g.lineCap = 'round'; g.stroke(); } };
     // capelli raccolti dietro la testa, chignon alto, ciocche che incorniciano il viso
@@ -197,6 +198,14 @@ const Hero = (() => {
     } else {
     Px.ell(g, 16.2, 26.6, 2.3, 1.3, 'rgba(241,140,130,0.55)'); Px.ell(g, 28.2, 26.6, 2.3, 1.3, 'rgba(241,140,130,0.55)');
     path(() => { g.moveTo(18.8, 28.8); g.quadraticCurveTo(22.2, 31.6, 25.8, 28.8); g.quadraticCurveTo(22.2, 29.8, 18.8, 28.8); }, '#ffffff', '#b4504f', 0.8);
+    }
+    if (hen) {                                                           // cresta, becco e bargigli da gallina
+      for (const [x, y, r] of [[15.5, 3.2, 3.2], [19.4, 0.8, 3.6], [24, 0.2, 3.8], [28.4, 1.8, 3.4], [31.4, 4.6, 2.6]]) { Px.ell(g, x, y + 1, r, r, '#a82036'); Px.ell(g, x, y, r, r, '#e0344b'); Px.ell(g, x - 0.8, y - 0.9, r * 0.4, r * 0.35, '#ff8a9a'); }
+      path(() => { g.moveTo(17.2, 24.4); g.lineTo(26.8, 24.4); g.quadraticCurveTo(25.4, 29.4, 22, 32.4); g.quadraticCurveTo(18.6, 29.4, 17.2, 24.4); g.closePath(); }, '#f7a531', '#a8661a', 0.8);
+      path(() => { g.moveTo(17.8, 25.4); g.lineTo(26.2, 25.4); }, null, '#ffd27a', 0.8);
+      path(() => { g.moveTo(18.6, 27.8); g.quadraticCurveTo(22, 29.2, 25.4, 27.8); }, null, '#a8661a', 0.6);
+      Px.ell(g, 22, 34.6, 2.2, 3, '#e0344b'); Px.ell(g, 21.4, 33.6, 0.7, 1.1, '#ff8a9a');
+      path(() => { g.moveTo(14.2, 18.4); g.lineTo(20.4, 17.2); }, null, '#3b2417', 1.4); path(() => { g.moveTo(29.8, 18.4); g.lineTo(23.6, 17.2); }, null, '#3b2417', 1.4);   // sopracciglia offese
     }
     if (withWreath) wreath(ctx);
   }
@@ -276,6 +285,47 @@ const Hero = (() => {
     ctx.restore();
   }
 
+  // Martina trasformata in gallina gigante: corpo bianco e paffuto, ali, zampe arancioni, la sua faccia con il becco (canvas 110x100)
+  function drawHen(ctx, outfit, withWreath) {
+    const o = OUT[outfit], cx = 45, W = '#fdfdf7', W2 = '#e4e6dc', W3 = '#c4c9bf';
+    const E = (x, y, rx, ry, c) => Px.ell(ctx, x, y, rx, ry, c);
+    ctx.save(); ctx.translate(10, 0);
+    const arc = (x0, y0, x1, y1, qx, qy, w, c) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(qx, qy, x1, y1); ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.stroke(); };
+    // coda a ventaglio dietro il corpo
+    for (let i = -2; i <= 2; i++) { ctx.save(); ctx.translate(cx + i * 9, 52); ctx.rotate(i * 0.32); E(0, -12, 6, 16, i % 2 ? W2 : W); ctx.restore(); }
+    // zampe e piedi palmati arancioni
+    for (const sd of [-1, 1]) {
+      const x = cx + sd * 12;
+      Px.line(ctx, x, 82, x, 95, 4.2, '#f2a33a'); Px.line(ctx, x - 1, 82, x - 1, 95, 1, '#ffd27a');
+      for (const a of [-0.8, 0, 0.8]) Px.line(ctx, x, 95, x + a * 8, 98.5, 3, '#f2a33a');
+      E(x, 96, 3.6, 2, '#f2a33a');
+    }
+    // corpo tondo e paffuto
+    E(cx, 62, 35, 29, W3); E(cx, 61, 35, 28, W); E(cx - 6, 52, 22, 15, '#ffffff'); E(cx + 14, 72, 22, 14, W2);
+    // piume a scaglie sul petto e sulla pancia
+    for (let r = 0; r < 4; r++) for (let c = -2 + (r % 2 ? 0.5 : 0); c <= 2; c++) arc(cx + c * 10 - 4, 60 + r * 6, cx + c * 10 + 4, 60 + r * 6, cx + c * 10, 64 + r * 6, 1, W3);
+    // ali: arrotondate, con punte di piuma
+    for (const sd of [-1, 1]) {
+      ctx.save(); ctx.translate(cx + sd * 35, 58); ctx.rotate(sd * 0.28);
+      E(0, 8, 11, 26, W3); E(-sd * 0.8, 7, 10, 25, W); E(-sd * 3, 2, 5, 14, '#ffffff');
+      for (let i = 0; i < 4; i++) { E(sd * (-5 + i * 3.4), 30 - (i % 2) * 2, 4, 5, W2); arc(sd * (-5 + i * 3.4) - 3, 28, sd * (-5 + i * 3.4) + 3, 28, sd * (-5 + i * 3.4), 33, 0.9, W3); }
+      ctx.restore();
+    }
+    // brandelli del vestito rimasti addosso: colletto e cintura
+    ctx.fillStyle = o.top;
+    ctx.beginPath(); ctx.moveTo(cx - 14, 43); ctx.lineTo(cx - 3, 46); ctx.lineTo(cx - 9, 56); ctx.lineTo(cx - 12, 52); ctx.lineTo(cx - 17, 54); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx + 14, 43); ctx.lineTo(cx + 3, 46); ctx.lineTo(cx + 9, 56); ctx.lineTo(cx + 12, 52); ctx.lineTo(cx + 17, 54); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = o.topHi; ctx.fillRect(cx - 12, 45, 5, 1.2); ctx.fillRect(cx + 7, 45, 5, 1.2);
+    const belt = outfit === 'casual' ? '#7a1f35' : o.pantsLo;
+    ctx.beginPath(); ctx.ellipse(cx, 70, 30, 6, 0, 0.05 * Math.PI, 0.95 * Math.PI); ctx.strokeStyle = belt; ctx.lineWidth = 4.5; ctx.stroke();
+    if (outfit === 'casual') { ctx.fillStyle = '#f6c344'; ctx.fillRect(cx - 4, 72, 8, 7); ctx.fillStyle = '#7a1f35'; ctx.fillRect(cx - 2.5, 73.5, 5, 4); ctx.fillStyle = '#fff3b0'; ctx.fillRect(cx - 4, 72, 8, 1.2); }
+    // collo di piume e testa di Martina con cresta e becco
+    E(cx, 45, 16, 8, W3); E(cx, 44, 16, 7, W);
+    for (let i = -3; i <= 3; i++) E(cx + i * 4.6, 47 + Math.abs(i) * 0.6, 3.2, 3.6, i % 2 ? W2 : W);
+    ctx.save(); ctx.translate(cx - 22 * 1.1, 4); ctx.scale(1.1, 1.1); head(ctx, withWreath, 'hen'); ctx.restore();
+    ctx.restore();
+  }
+
   // Scivolata: Martina si accovaccia e scivola sotto il cartello (canvas 60x52)
   function drawSlide(ctx, outfit, withWreath) {
     const o = OUT[outfit];
@@ -305,8 +355,9 @@ const Hero = (() => {
     const key = `${outfit}|${pose}|${withWreath ? 1 : 0}`;
     if (cache[key]) return cache[key];
     const slide = pose === 'slide', big = pose === 'big';
-    const c = Px.make(big ? 110 : (slide ? 60 : 44), big ? 100 : (slide ? 52 : 80), (ctx) => {
-      if (big) drawBig(ctx, outfit, withWreath);
+    const c = Px.make((big || pose === 'hen') ? 110 : (slide ? 60 : 44), (big || pose === 'hen') ? 100 : (slide ? 52 : 80), (ctx) => {
+      if (pose === 'hen') drawHen(ctx, outfit, withWreath);
+      else if (big) drawBig(ctx, outfit, withWreath);
       else if (slide) drawSlide(ctx, outfit, withWreath);
       else drawStanding(ctx, outfit, pose, withWreath);
     }, false, 3);

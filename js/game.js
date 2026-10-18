@@ -99,7 +99,7 @@ function GameScene(app, outfit) {
   function startDoor() {
     const pz = CFG.DOOR.puzzles[g.doorIdx++];
     g.phase = 'door';
-    g.door = { state: 'arrive', t: 0, pz, doors: pz.doors.slice().sort(() => Math.random() - 0.5), sel: 1, pick: -1, result: null, ev: {}, stabbed: false, poison: !!pz.poison, smoke: [] };
+    g.door = { state: 'arrive', t: 0, pz, doors: pz.doors.slice().sort(() => Math.random() - 0.5), sel: 1, pick: -1, result: null, ev: {}, stabbed: false, poison: !!pz.poison, smoke: [], morph: Math.random() < 0.5 ? 'hulk' : 'hen' };
     g.objs = g.objs.filter((o) => o.w - st.T < 0.05);
     g.lane = 1; g.jumpT = 0; g.slideT = 0;
   }
@@ -139,10 +139,10 @@ function GameScene(app, outfit) {
     } else {
       once('bump', 0.7, () => { Sfx.hit(); g.shake = 0.3; });
       once('warn', 1.5, () => Sfx.warn());
-      once('roar', 4.41, () => { Sfx.roar(); g.shake = 0.7; g.flash = 0.3; fx.burst(d.hx, HERO_DOOR_FEET - 30, ['#ffffff', '#2c2c34', '#7ee08f', '#6e32aa'], 36, 120, 0.8, 80); });
+      once('roar', 4.41, () => morphBurst(d.morph, d.hx, HERO_DOOR_FEET - 30));
       once('stab', 2.95, () => { d.stabbed = true; g.flash = 0.35; g.shake = 0.5; Sfx.hit(); fx.burst(d.hx, HERO_DOOR_FEET - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
       const END = d.poison ? 7.0 : 4.5;
-      if (d.t >= END) { g.hits = CFG.MAX_HITS; g.phase = 'caught'; g.phaseT = 1.5; g.door = null; g.gapTarget = -0.2; Sfx.stopMusic(); finish(); }
+      if (d.t >= END) { g.morph = d.morph; g.hits = CFG.MAX_HITS; g.phase = 'caught'; g.phaseT = 1.5; g.door = null; g.gapTarget = -0.2; Sfx.stopMusic(); finish(); }
     }
   }
 
@@ -168,10 +168,17 @@ function GameScene(app, outfit) {
 
   // Martina trasformata: prima trema e diventa verde, poi esplode nel personaggio gigante (sprite dedicato)
   const SWAP = 0.6;
-  function drawHulk(ctx, pose, x, y, k, amt, t) {
+  function morphBurst(kind, x, y) {
+    g.shake = 0.7; g.flash = 0.3;
+    if (kind === 'hen') { Sfx.cluck(); fx.burst(x, y, ['#ffffff', '#fff3d6', '#e0344b', '#f7a531'], 44, 120, 1.1, 40); }
+    else { Sfx.roar(); fx.burst(x, y, ['#ffffff', '#2c2c34', '#7ee08f', '#6e32aa'], 36, 120, 0.8, 80); }
+  }
+  const ROAR = { hulk: ['GRRR...', 'GRAAAH!', '#7ee08f'], hen: ['CO CO...', "COCCODE'!", '#fff3b0'] };
+  function drawHulk(ctx, pose, x, y, k, amt, t, kind) {
     ctx.save();
+    const hen = kind === 'hen';
     if (amt < SWAP) {
-      const q = amt / SWAP, lvl = amt <= 0 ? 0 : Math.min(6, Math.floor(q * 5.99) + 1);
+      const q = amt / SWAP, lvl = amt <= 0 || hen ? 0 : Math.min(6, Math.floor(q * 5.99) + 1);
       const img = greenImg(Hero.get(outfit, pose), lvl);
       ctx.translate(x + Math.sin(t * 50) * q * 1.2, y);
       ctx.scale(1 + 0.18 * q, 1 + 0.1 * q);
@@ -181,7 +188,7 @@ function GameScene(app, outfit) {
       const breathe = amt >= 1 ? Math.sin(t * 6) * 0.012 : 0;
       ctx.translate(x + (amt >= 1 ? Math.sin(t * 38) * 0.35 : 0), y);
       ctx.scale((0.9 + 0.1 * Px.ease(q)) * pop * (1 - breathe), (0.9 + 0.1 * Px.ease(q)) * pop * (1 + breathe));
-      Px.blit(ctx, Hero.get(outfit, 'big'), 0, 0, k);
+      Px.blit(ctx, Hero.get(outfit, hen ? 'hen' : 'big'), 0, 0, k);
     }
     ctx.restore();
   }
@@ -189,7 +196,7 @@ function GameScene(app, outfit) {
   function drawSmoke(ctx, d, hx, feet, k, sp) {
     if (g.frameT % 0.05 < 0.017 || d.smoke.length < 3) {
       const rate = Px.clamp((sp - 0.7) / 1.5, 0.2, 1);
-      if (Math.random() < rate) d.smoke.push({ x: hx + (Math.random() < 0.5 ? -1 : 1) * (22 + Math.random() * 8) * k / 1.25, y: feet - 30 - Math.random() * 30, vx: (Math.random() - 0.5) * 8, vy: -(14 + Math.random() * 16), r: 3 + Math.random() * 3, age: 0, life: 1.4 + Math.random() * 0.8, c: ['#7ee08f', '#4fb866', '#2f8a46'][(Math.random() * 3) | 0] });
+      if (Math.random() < rate) d.smoke.push({ x: hx + (Math.random() < 0.5 ? -1 : 1) * (22 + Math.random() * 8) * k / 1.25, y: feet - 30 - Math.random() * 30, vx: (Math.random() - 0.5) * 8, vy: -(14 + Math.random() * 16), r: 3 + Math.random() * 3, age: 0, life: 1.4 + Math.random() * 0.8, c: (d.kind === 'hen' ? ['#ffffff', '#fff3d6', '#e4e6dc'] : ['#7ee08f', '#4fb866', '#2f8a46'])[(Math.random() * 3) | 0] });
     }
     const dt = 1 / 60;
     for (const q of d.smoke) { q.age += dt; q.x += (q.vx + Math.sin(q.age * 5 + q.y) * 6) * dt; q.y += q.vy * dt; q.r += dt * 5; }
@@ -269,7 +276,7 @@ function GameScene(app, outfit) {
     const sp0 = d.stabbed ? d.t - 2.95 : -1;
     if (d.poison && sp0 > 0.9) { pose = 'stand'; hx += Math.sin(d.t * 9) * 1.2; feet -= Math.abs(Math.sin(d.t * 7)) * 1.2; }
     const amt = d.poison && sp0 > 0.5 ? Px.clamp((sp0 - 0.5) / 1.6, 0, 1) : 0;
-    drawHulk(ctx, pose, hx, feet, k, amt, g.frameT);
+    d.kind = d.morph; drawHulk(ctx, pose, hx, feet, k, amt, g.frameT, d.morph);
     if (amt >= 1 && sp0 < 2.6) { ctx.strokeStyle = `rgba(160,255,150,${0.6 - (sp0 - 2.1) * 1.2})`; ctx.lineWidth = 2; const r = (sp0 - 2.1) * 90; if (r > 0) { ctx.beginPath(); ctx.ellipse(hx, feet - 8, r, r * 0.3, 0, 0, Math.PI * 2); ctx.stroke(); } }
     ctx.globalAlpha = 1;
     if (d.poison && sp0 > 0.7) drawSmoke(ctx, d, hx, feet, k, sp0);
@@ -295,7 +302,7 @@ function GameScene(app, outfit) {
         const sp = d.t - 2.95;
         if (sp < 1.2) Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff');
         if (sp > 0.5 && sp < 1.4) Px.text(ctx, 'PUNTURA!', 90, 112, PAL.gold, 5, 'center', PAL.ink);
-        if (d.poison && sp > 1.7 && sp < 4.0) Px.text(ctx, sp > 2.3 ? 'GRAAAH!' : 'GRRR...', 90, feet - 84 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), '#7ee08f', sp > 2.3 ? 5 : 3, 'center', PAL.ink);
+        if (d.poison && sp > 1.7 && sp < 4.0) { const R = ROAR[d.morph]; Px.text(ctx, sp > 2.3 ? R[1] : R[0], 90, feet - 84 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), R[2], sp > 2.3 ? 5 : 3, 'center', PAL.ink); }
       }
     }
     const T_FADE = d.poison ? 6.4 : 3.9;
@@ -340,7 +347,7 @@ function GameScene(app, outfit) {
     Sfx.hit();
     fx.burst(World.laneXf(g.laneF, 1), PY - 26, ['#ffd23f', '#ffffff', '#e0344b'], 18, 80, 0.5, 120);
     if (g.hits >= CFG.MAX_HITS) {
-      g.phase = 'caught'; g.phaseT = 0; g.gapTarget = 1.2; g.jumpT = 0; g.slideT = 0; g.catchEv = {}; g.catchHx = World.laneXf(g.laneF, 1); g.catchDir = g.catchHx <= 90 ? 1 : -1;
+      g.phase = 'caught'; g.phaseT = 0; g.gapTarget = 1.2; g.jumpT = 0; g.slideT = 0; g.morph = Math.random() < 0.5 ? 'hulk' : 'hen'; g.catchEv = {}; g.catchHx = World.laneXf(g.laneF, 1); g.catchDir = g.catchHx <= 90 ? 1 : -1;
       Sfx.stopMusic();
     }
   }
@@ -390,7 +397,7 @@ function GameScene(app, outfit) {
       g.gapV += (g.gapTarget - g.gapV) * Math.min(1, dt * 5);
       once('warn', 0.35, () => Sfx.warn());
       once('stab', CATCH.stab, () => { g.flash = 0.35; g.shake = 0.5; Sfx.hit(); fx.burst(hx, PY - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
-      once('roar', CATCH.stab + 0.5 + 0.6 * 1.6, () => { Sfx.roar(); g.shake = 0.7; g.flash = 0.3; fx.burst(hx, PY - 30, ['#ffffff', '#2c2c34', '#7ee08f', '#6e32aa'], 36, 120, 0.8, 80); });
+      once('roar', CATCH.stab + 0.5 + 0.6 * 1.6, () => morphBurst(g.morph, hx, PY - 30));
       if (pt > CATCH.end) finish();
       return;
     }
@@ -531,7 +538,7 @@ function GameScene(app, outfit) {
       const amt = sp > 0.5 ? Px.clamp((sp - 0.5) / 1.6, 0, 1) : 0;
       let cp = 'stand', cy = PY + 1;
       if (g.phase === 'caught' && sp >= 0 && sp < 0.9) { cp = 'jump'; cy -= Math.abs(Math.sin(sp * 9)) * 8; }
-      drawHulk(ctx, cp, g.catchHx != null ? g.catchHx : x, cy, HK, amt, g.frameT);
+      drawHulk(ctx, cp, g.catchHx != null ? g.catchHx : x, cy, HK, amt, g.frameT, g.morph);
       if (g.phase === 'caught' && sp > 0.7 && sp < 3.4) drawCatchSmoke(ctx, g.catchHx, PY + 1, sp);
       return;
     }
@@ -558,7 +565,7 @@ function GameScene(app, outfit) {
   // infermiera che arriva di corsa, prende la rincorsa e punge Martina
   const catchSmoke = { list: [] };
   function drawCatchSmoke(ctx, hx, feet, sp) {
-    const d = { smoke: catchSmoke.list };
+    const d = { smoke: catchSmoke.list, kind: g.morph };
     drawSmoke(ctx, d, hx, feet, HK, sp);
     catchSmoke.list = d.smoke;
   }
@@ -581,7 +588,7 @@ function GameScene(app, outfit) {
     const sp = pt - CATCH.stab;
     if (sp >= 0 && sp < 1.2) Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff');
     if (sp > 0.5 && sp < 1.4) Px.text(ctx, 'PUNTURA!', 90, 112, PAL.gold, 5, 'center', PAL.ink);
-    if (sp > 1.7 && sp < 3.4) Px.text(ctx, sp > 2.3 ? 'GRAAAH!' : 'GRRR...', 90, feet - 90 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), '#7ee08f', sp > 2.3 ? 5 : 3, 'center', PAL.ink);
+    if (sp > 1.7 && sp < 3.4) { const R = ROAR[g.morph || 'hulk']; Px.text(ctx, sp > 2.3 ? R[1] : R[0], 90, feet - 90 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), R[2], sp > 2.3 ? 5 : 3, 'center', PAL.ink); }
   }
 
   function drawChaser(ctx) {
