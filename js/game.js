@@ -140,7 +140,7 @@ function GameScene(app, outfit) {
       once('bump', 0.7, () => { Sfx.hit(); g.shake = 0.3; });
       once('warn', 1.5, () => Sfx.warn());
       once('roar', 4.41, () => morphBurst(d.morph, d.hx, HERO_DOOR_FEET - 30));
-      once('stab', 2.95, () => { d.stabbed = true; g.flash = 0.35; g.shake = 0.5; Sfx.hit(); fx.burst(d.hx, HERO_DOOR_FEET - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
+      once('stab', 2.95, () => { d.stabbed = true; g.flash = 0.35; g.shake = 0.5; Sfx.hit(); if (d.poison) cry(d.morph); fx.burst(d.hx, HERO_DOOR_FEET - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
       const END = d.poison ? 7.0 : 4.5;
       if (d.t >= END) { g.morph = d.morph; g.hits = CFG.MAX_HITS; g.phase = 'caught'; g.phaseT = 1.5; g.door = null; g.gapTarget = -0.2; Sfx.stopMusic(); finish(); }
     }
@@ -168,10 +168,11 @@ function GameScene(app, outfit) {
 
   // Martina trasformata: prima trema e diventa verde, poi esplode nel personaggio gigante (sprite dedicato)
   const SWAP = 0.6;
+  function cry(kind) { if (kind === 'hen') Sfx.cluck(); else Sfx.roar(); }          // il verso parte nel momento della puntura
   function morphBurst(kind, x, y) {
     g.shake = 0.7; g.flash = 0.3;
-    if (kind === 'hen') { Sfx.cluck(); fx.burst(x, y, ['#ffffff', '#fff3d6', '#e0344b', '#f7a531'], 44, 120, 1.1, 40); }
-    else { Sfx.roar(); fx.burst(x, y, ['#ffffff', '#2c2c34', '#7ee08f', '#6e32aa'], 36, 120, 0.8, 80); }
+    if (kind === 'hen') { fx.burst(x, y, ['#ffffff', '#fff3d6', '#e0344b', '#f7a531'], 44, 120, 1.1, 40); }
+    else { fx.burst(x, y, ['#ffffff', '#2c2c34', '#7ee08f', '#6e32aa'], 36, 120, 0.8, 80); }
   }
   const ROAR = { hulk: ['GRRR...', 'GRAAAH!', '#7ee08f'], hen: ['CO CO...', "COCCODE'!", '#fff3b0'] };
   function drawHulk(ctx, pose, x, y, k, amt, t, kind) {
@@ -300,7 +301,7 @@ function GameScene(app, outfit) {
       if (d.t > 1.5 && d.t < 2.4) Px.text(ctx, '!', hx, feet - 62 + Math.sin(d.t * 16) * 1.2, PAL.red, 6, 'center', '#ffffff');
       if (d.stabbed) {
         const sp = d.t - 2.95;
-        if (sp < 1.2) Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff');
+        if (sp < 1.2) { const R = d.poison ? ROAR[d.morph] : null; if (R) Px.text(ctx, R[1], hx, feet - 72 - sp * 6, R[2], 5, 'center', PAL.ink); else Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff'); }
         if (sp > 0.5 && sp < 1.4) Px.text(ctx, 'PUNTURA!', 90, 112, PAL.gold, 5, 'center', PAL.ink);
         if (d.poison && sp > 1.7 && sp < 4.0) { const R = ROAR[d.morph]; Px.text(ctx, sp > 2.3 ? R[1] : R[0], 90, feet - 84 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), R[2], sp > 2.3 ? 5 : 3, 'center', PAL.ink); }
       }
@@ -396,7 +397,7 @@ function GameScene(app, outfit) {
       st.T += g.speed * dt;
       g.gapV += (g.gapTarget - g.gapV) * Math.min(1, dt * 5);
       once('warn', 0.35, () => Sfx.warn());
-      once('stab', CATCH.stab, () => { g.flash = 0.35; g.shake = 0.5; Sfx.hit(); fx.burst(hx, PY - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
+      once('stab', CATCH.stab, () => { g.flash = 0.35; g.shake = 0.5; Sfx.hit(); cry(g.morph); fx.burst(hx, PY - 28, ['#ffffff', '#7fd3ff', PAL.red, PAL.gold], 24, 90, 0.6, 60); });
       once('roar', CATCH.stab + 0.5 + 0.6 * 1.6, () => morphBurst(g.morph, hx, PY - 30));
       if (pt > CATCH.end) finish();
       return;
@@ -586,7 +587,7 @@ function GameScene(app, outfit) {
     ctx.restore();
     if (pt > 0.3 && pt < CATCH.arrive + 0.3) Px.text(ctx, '!', hx, feet - 62 + Math.sin(pt * 16) * 1.2, PAL.red, 6, 'center', '#ffffff');
     const sp = pt - CATCH.stab;
-    if (sp >= 0 && sp < 1.2) Px.text(ctx, 'AHI!', hx, feet - 72 - sp * 6, PAL.red, 5, 'center', '#ffffff');
+    if (sp >= 0 && sp < 1.2) { const R = ROAR[g.morph || 'hulk']; Px.text(ctx, R[1], hx, feet - 72 - sp * 6, R[2], 5, 'center', PAL.ink); }
     if (sp > 0.5 && sp < 1.4) Px.text(ctx, 'PUNTURA!', 90, 112, PAL.gold, 5, 'center', PAL.ink);
     if (sp > 1.7 && sp < 3.4) { const R = ROAR[g.morph || 'hulk']; Px.text(ctx, sp > 2.3 ? R[1] : R[0], 90, feet - 90 - (sp > 2.3 ? Math.sin(sp * 20) * 1.2 : 0), R[2], sp > 2.3 ? 5 : 3, 'center', PAL.ink); }
   }
