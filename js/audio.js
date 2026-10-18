@@ -113,6 +113,13 @@ const Sfx = (() => {
       voice(1250, 780, 0.6, 0.42, 0.74, { formant: 1400, q: 2, vib: 22, vibDepth: 110 });
       noise(0.12, 0.05, 0.55);
     },
+    // sumo: tamburo taiko, "HAI!" gridato e pestone che fa tremare il pavimento
+    sumo() {
+      tone(110, 0.45, 'sine', 0.55, 45, 0); noise(0.12, 0.2, 0);
+      voice(210, 250, 0.16, 0.5, 0.12, { type: 'sawtooth', formant: 820, q: 2.2, vib: 9, vibDepth: 6, dist: 2 });
+      voice(250, 310, 0.34, 0.5, 0.26, { type: 'sawtooth', formant: 2300, q: 2.2, vib: 7, vibDepth: 8, dist: 2 });
+      tone(70, 0.5, 'sine', 0.6, 35, 0.62); noise(0.22, 0.18, 0.62);
+    },
     // ruggito da gigante: ringhio basso distorto con tremolo, rantolo di rumore e un secondo "GRAAH" piu' acuto
     roar() {
       voice(95, 48, 1.3, 0.55, 0, { type: 'sawtooth', formant: 260, q: 0.9, vib: 26, vibDepth: 14, dist: 4 });

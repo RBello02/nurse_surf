@@ -146,8 +146,9 @@ const Hero = (() => {
 
   function head(ctx, withWreath, angry) {
     const g = ctx;
-    const hen = angry === 'hen'; if (hen) angry = false;
-    const SK = angry ? GREEN.skin : H.skin, SKS = angry ? GREEN.shade : H.skinShade, SKH = angry ? GREEN.hi : '#f7d9bd';
+    const hen = angry === 'hen', sumo = angry === 'sumo'; if (hen) angry = false; if (sumo) angry = true;
+    const green = angry && !sumo;
+    const SK = green ? GREEN.skin : H.skin, SKS = green ? GREEN.shade : H.skinShade, SKH = green ? GREEN.hi : '#f7d9bd';
     const path = (fn, fill, stroke, lw) => { g.beginPath(); fn(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 1; g.lineJoin = 'round'; g.lineCap = 'round'; g.stroke(); } };
     // capelli raccolti dietro la testa, chignon alto, ciocche che incorniciano il viso
     Px.ell(g, 22, 16, 13, 13.5, H.hair);
@@ -326,6 +327,42 @@ const Hero = (() => {
     ctx.restore();
   }
 
+  // Martina trasformata in lottatrice di sumo: pancione enorme, mawashi bordeaux, posa di sfida (canvas 110x100)
+  function drawSumo(ctx, outfit, withWreath) {
+    const o = OUT[outfit], cx = 45, K = H.skin, KH = '#f7d9bd', KS = H.skinShade, KD = '#c0916c';
+    const E = (x, y, rx, ry, c) => Px.ell(ctx, x, y, rx, ry, c);
+    ctx.save(); ctx.translate(10, 0);
+    const arc = (x0, y0, x1, y1, qx, qy, w, c) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(qx, qy, x1, y1); ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.stroke(); };
+    // gambe larghe e piegate (posa del sumo), piedi nudi
+    for (const sd of [-1, 1]) {
+      const hx = cx + sd * 18, fx = cx + sd * 27;
+      Px.line(ctx, hx, 74, fx, 92, 19, K); Px.line(ctx, hx - sd * 6, 76, fx - sd * 6, 90, 3, KH); Px.line(ctx, hx + sd * 7, 78, fx + sd * 7, 91, 3, KS);
+      E(fx + sd * 2, 96, 11, 4.4, K); E(fx + sd * 2, 97.4, 11, 2.6, KS);
+      for (let i = -1; i <= 1; i++) E(fx + sd * 2 + i * 4 + sd * 3, 97, 1.6, 1.6, KH);
+    }
+    // pancione enorme con le pieghe
+    E(cx, 62, 38, 31, KD); E(cx, 61, 38, 30, K); E(cx - 8, 50, 24, 15, KH); E(cx + 16, 72, 24, 15, KS);
+    arc(cx - 30, 64, cx - 6, 68, cx - 18, 72, 1.2, KD); arc(cx + 30, 64, cx + 6, 68, cx + 18, 72, 1.2, KD);
+    arc(cx - 22, 54, cx - 4, 58, cx - 13, 62, 1, KD); arc(cx + 22, 54, cx + 4, 58, cx + 13, 62, 1, KD);
+    E(cx, 63, 2.2, 3, KD); E(cx - 0.6, 62.4, 0.9, 1.3, KS);                                     // ombelico
+    // braccia robuste con le mani sulle ginocchia
+    for (const sd of [-1, 1]) {
+      Px.line(ctx, cx + sd * 35, 48, cx + sd * 40, 66, 17, K); Px.line(ctx, cx + sd * 40, 66, cx + sd * 33, 82, 15, K);
+      E(cx + sd * 36, 56, 9, 12, sd < 0 ? KH : K);                                              // spalla/bicipite
+      E(cx + sd * 32, 85, 8, 7.5, K); E(cx + sd * 32, 87, 8, 5, KS);                            // pugno
+    }
+    // mawashi: cintura spessa bordeaux con fibbia dorata e frange davanti
+    const belt = outfit === 'casual' ? '#7a1f35' : '#3a3f78';
+    ctx.beginPath(); ctx.ellipse(cx, 74, 38, 9, 0, 0.02 * Math.PI, 0.98 * Math.PI); ctx.strokeStyle = belt; ctx.lineWidth = 9; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx, 72, 38, 9, 0, 0.06 * Math.PI, 0.94 * Math.PI); ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#f6c344'; ctx.fillRect(cx - 5, 73, 10, 9); ctx.fillStyle = belt; ctx.fillRect(cx - 3.2, 74.8, 6.4, 5.4); ctx.fillStyle = '#fff3b0'; ctx.fillRect(cx - 5, 73, 10, 1.3);
+    for (let i = -5; i <= 5; i++) { ctx.fillStyle = i % 2 ? belt : '#9a2b47'; ctx.fillRect(cx + i * 3.4 - 1.5, 80, 3, 11 + (i % 2) * 2); ctx.fillStyle = '#f6c344'; ctx.fillRect(cx + i * 3.4 - 1.5, 90 + (i % 2) * 2, 3, 1.3); }
+    // collo taurino e testa di Martina decisa
+    E(cx, 42, 17, 9, KD); E(cx, 41, 17, 8, K);
+    ctx.save(); ctx.translate(cx - 22 * 1.1, 2); ctx.scale(1.1, 1.1); head(ctx, withWreath, 'sumo'); ctx.restore();
+    ctx.restore();
+  }
+
   // Scivolata: Martina si accovaccia e scivola sotto il cartello (canvas 60x52)
   function drawSlide(ctx, outfit, withWreath) {
     const o = OUT[outfit];
@@ -355,8 +392,9 @@ const Hero = (() => {
     const key = `${outfit}|${pose}|${withWreath ? 1 : 0}`;
     if (cache[key]) return cache[key];
     const slide = pose === 'slide', big = pose === 'big';
-    const c = Px.make((big || pose === 'hen') ? 110 : (slide ? 60 : 44), (big || pose === 'hen') ? 100 : (slide ? 52 : 80), (ctx) => {
-      if (pose === 'hen') drawHen(ctx, outfit, withWreath);
+    const c = Px.make((big || pose === 'hen' || pose === 'sumo') ? 110 : (slide ? 60 : 44), (big || pose === 'hen' || pose === 'sumo') ? 100 : (slide ? 52 : 80), (ctx) => {
+      if (pose === 'sumo') drawSumo(ctx, outfit, withWreath);
+      else if (pose === 'hen') drawHen(ctx, outfit, withWreath);
       else if (big) drawBig(ctx, outfit, withWreath);
       else if (slide) drawSlide(ctx, outfit, withWreath);
       else drawStanding(ctx, outfit, pose, withWreath);
