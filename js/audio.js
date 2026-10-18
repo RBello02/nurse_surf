@@ -48,6 +48,35 @@ const Sfx = (() => {
     s.start(c.currentTime + delay);
   }
 
+  // Voce sintetica "animale": oscillatore con formante (filtro passa-banda), vibrato e, volendo, distorsione
+  function voice(f0, f1, dur, vol, delay, o = {}) {
+    if (muted) return;
+    const c = ensure();
+    if (!c) return;
+    const t0 = c.currentTime + delay;
+    const osc = c.createOscillator(), g = c.createGain(), flt = c.createBiquadFilter();
+    osc.type = o.type || 'sawtooth';
+    osc.frequency.setValueAtTime(f0, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
+    flt.type = 'bandpass'; flt.frequency.value = o.formant || 1000; flt.Q.value = o.q || 2;
+    if (o.vib) {                                    // vibrato / ringhio
+      const lfo = c.createOscillator(), lg = c.createGain();
+      lfo.frequency.value = o.vib; lg.gain.value = o.vibDepth || 30;
+      lfo.connect(lg).connect(osc.frequency); lfo.start(t0); lfo.stop(t0 + dur + 0.05);
+    }
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + Math.min(0.03, dur * 0.2));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    let node = osc.connect(flt);
+    if (o.dist) {
+      const ws = c.createWaveShaper(), curve = new Float32Array(256);
+      for (let i = 0; i < 256; i++) { const x = i / 128 - 1; curve[i] = Math.tanh(x * o.dist); }
+      ws.curve = curve; node = node.connect(ws);
+    }
+    node.connect(g).connect(c.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  }
+
   // Melodia allegra semplice per il gameplay (arpeggio in Do maggiore)
   const MELODY = [523, 659, 784, 659, 587, 740, 880, 740, 523, 659, 784, 1047, 880, 784, 659, 587];
   const BASS = [131, 131, 196, 196, 147, 147, 196, 196];
@@ -77,8 +106,20 @@ const Sfx = (() => {
     lane() { tone(440, 0.06, 'triangle', 0.05, 520); },
     coin() { tone(988, 0.07, 'square', 0.06); tone(1319, 0.14, 'square', 0.06, null, 0.07); },
     hit() { noise(0.25, 0.1); tone(180, 0.3, 'sawtooth', 0.09, 60); },
-    cluck() { [0, 0.14, 0.28, 0.5].forEach((d, i) => { tone(560 + i * 90, 0.12, 'square', 0.07, 900 + i * 60, d); tone(300, 0.1, 'sawtooth', 0.03, 520, d); }); noise(0.35, 0.05, 0.5); },
-    roar() { noise(0.7, 0.12); tone(110, 0.8, 'sawtooth', 0.12, 45); tone(220, 0.5, 'square', 0.05, 90, 0.1); },
+    // gallina: tre "bok bok bok" secchi e uno "coccodeee" lungo e acuto con vibrato
+    cluck() {
+      [0, 0.16, 0.32].forEach((d, i) => voice(520 + i * 40, 880 + i * 60, 0.11, 0.35, d, { type: 'sawtooth', formant: 1300, q: 3 }));
+      voice(700, 1250, 0.18, 0.4, 0.55, { formant: 1500, q: 2.5 });
+      voice(1250, 780, 0.6, 0.42, 0.74, { formant: 1400, q: 2, vib: 22, vibDepth: 110 });
+      noise(0.12, 0.05, 0.55);
+    },
+    // ruggito da gigante: ringhio basso distorto con tremolo, rantolo di rumore e un secondo "GRAAH" piu' acuto
+    roar() {
+      voice(95, 48, 1.3, 0.55, 0, { type: 'sawtooth', formant: 260, q: 0.9, vib: 26, vibDepth: 14, dist: 4 });
+      voice(190, 85, 1.0, 0.4, 0.05, { type: 'square', formant: 520, q: 1.2, vib: 34, vibDepth: 26, dist: 3 });
+      voice(320, 150, 0.7, 0.25, 0.2, { type: 'sawtooth', formant: 900, q: 1.5, vib: 18, vibDepth: 20 });
+      noise(1.0, 0.14, 0);
+    },
     warn() { tone(660, 0.1, 'square', 0.05); tone(550, 0.1, 'square', 0.05, null, 0.12); },
     select() { tone(660, 0.07, 'square', 0.06); tone(880, 0.09, 'square', 0.06, null, 0.07); },
     start() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.12, 'square', 0.07, null, i * 0.09)); },
