@@ -42,7 +42,9 @@ const CFG = {
       { atCfu: 105, question: ['IN UN ARMADIO DEL REPARTO', 'TI SIEDI DI NASCOSTO.', 'COSA SENTI SOTTO DI TE?'], poison: true, doors: [
         { kind: 'A', label: 'INFERMIERE' }, { kind: 'B', label: 'MATERASSI' }, { kind: 'C', label: 'DEFUNTO', right: true }] },
       { atCfu: 125, question: ['UROLOGIA: EMATURIA INDOLORE', 'IN UN FUMATORE DI 60 ANNI.', 'PRIMO SOSPETTO?'], poison: true, doors: [
-        { kind: 'A', label: 'VESCICA', right: true }, { kind: 'B', label: 'PROSTATA' }, { kind: 'C', label: 'CALCOLI' }] }
+        { kind: 'A', label: 'VESCICA', right: true }, { kind: 'B', label: 'PROSTATA' }, { kind: 'C', label: 'CALCOLI' }] },
+      { atCfu: 140, question: ["QUAL E' IL VERO MIRACOLO", 'DI QUESTA LAUREA?'], poison: true, doors: [
+        { kind: 'A', label: 'IMPARATO' }, { kind: 'B', label: 'SOPRAVVIVO' }, { kind: 'C', label: 'NO LITI', right: true }] }
     ]
   },
   ZONES: {
