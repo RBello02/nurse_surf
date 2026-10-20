@@ -37,6 +37,8 @@ const CFG = {
     puzzles: [
       { atCfu: 30, zone: 'hospital', question: ["COSA TI CHIESE L'INFERMIERE", 'DURANTE IL TIROCINIO?'], poison: true, doors: [
         { kind: 'A', label: 'SINCOPE', right: true }, { kind: 'B', label: 'EMBOLIA' }, { kind: 'C', label: 'ISCHEMIA' }] },
+      { atCfu: 45, zone: 'hospital', question: ["QUAL E' STATO IL TUO PASTO", "PIU' DISCUTIBILE IN REPARTO?"], poison: true, doors: [
+        { kind: 'A', label: 'PASTA' }, { kind: 'B', label: 'POLLO ROSA', right: true }, { kind: 'C', label: "PURE'" }] },
       { atCfu: 105, question: ['QUANDO SI DORME?'], poison: true, doors: [
         { kind: 'sleep', label: 'SI DORME', right: true }, { kind: 'talk', label: 'SI PARLA' }, { kind: 'eat', label: 'SI MANGIA' }] },
       { atCfu: 125, question: ['UROLOGIA: EMATURIA INDOLORE', 'IN UN FUMATORE DI 60 ANNI.', 'PRIMO SOSPETTO?'], poison: true, doors: [
