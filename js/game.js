@@ -62,7 +62,8 @@ function GameScene(app, outfit) {
     const d = Px.clamp(g.time / CFG.RAMP_TIME, 0, 1);
     while (g.nextRowW < st.T + 3.1) {
       if (g.cfu >= CFG.CFU_GOAL) { startCorridor(); break; }
-      if (g.doorIdx < CFG.DOOR.puzzles.length && g.uniGate && g.phase === 'run' && g.cfu >= CFG.DOOR.puzzles[g.doorIdx].atCfu) { startDoor(); break; }
+      const pz = CFG.DOOR.puzzles[g.doorIdx];
+      if (pz && g.phase === 'run' && g.cfu >= pz.atCfu && (pz.zone === 'hospital' ? !g.uniGate : g.uniGate)) { startDoor(); break; }
       if (!g.uniGate && g.cfu >= CFG.UNI_AT_CFU) startUni();
       spawnRow(g.nextRowW, d);
       const gapW = Px.lerp(1.25, 0.88, d) * g.speed;
