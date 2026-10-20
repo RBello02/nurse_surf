@@ -39,8 +39,8 @@ const CFG = {
         { kind: 'A', label: 'SINCOPE', right: true }, { kind: 'B', label: 'EMBOLIA' }, { kind: 'C', label: 'ISCHEMIA' }] },
       { atCfu: 45, zone: 'hospital', question: ["QUAL E' STATO IL TUO PASTO", "PIU' DISCUTIBILE IN REPARTO?"], poison: true, doors: [
         { kind: 'A', label: 'PASTA' }, { kind: 'B', label: 'POLLO ROSA', right: true }, { kind: 'C', label: "PURE'" }] },
-      { atCfu: 105, question: ['QUANDO SI DORME?'], poison: true, doors: [
-        { kind: 'sleep', label: 'SI DORME', right: true }, { kind: 'talk', label: 'SI PARLA' }, { kind: 'eat', label: 'SI MANGIA' }] },
+      { atCfu: 105, question: ['IN UN ARMADIO DEL REPARTO', 'TI SIEDI DI NASCOSTO.', 'COSA SENTI SOTTO DI TE?'], poison: true, doors: [
+        { kind: 'A', label: 'INFERMIERE' }, { kind: 'B', label: 'MATERASSI' }, { kind: 'C', label: 'DEFUNTO', right: true }] },
       { atCfu: 125, question: ['UROLOGIA: EMATURIA INDOLORE', 'IN UN FUMATORE DI 60 ANNI.', 'PRIMO SOSPETTO?'], poison: true, doors: [
         { kind: 'A', label: 'VESCICA', right: true }, { kind: 'B', label: 'PROSTATA' }, { kind: 'C', label: 'CALCOLI' }] }
     ]

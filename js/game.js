@@ -234,9 +234,11 @@ function GameScene(app, outfit) {
         const lw = 33 * (1 - open * 0.88);
         ctx.drawImage(dr.leaf, x - 16.5 + shake, 162 + dy, lw, 60);
         // cartello con la scelta
-        const lab = d.doors[i].label, tw = Px.textWidth(lab, 2) + 6;
+        const lab = d.doors[i].label, maxW = i === 1 ? 74 : 58;
+        let lf = 2; while (lf > 1 && Px.textWidth(lab, lf) + 6 > maxW) lf -= 0.25;          // le scritte lunghe si rimpiccioliscono
+        const tw = Px.textWidth(lab, lf) + 6;
         Px.rect(ctx, x - tw / 2 + shake, 143 + dy, tw, 12, PAL.ink); Px.rect(ctx, x - tw / 2 + 1 + shake, 144 + dy, tw - 2, 10, '#fff3b0');
-        Px.text(ctx, lab, x + shake, 146.5 + dy, PAL.ink, 2, 'center');
+        Px.text(ctx, lab, x + shake, 146.5 + dy + (2 - lf) * 1.6, PAL.ink, lf, 'center');
         if (wrong && d.pick === i && d.t > 0.7) {                  // porta bloccata: X rossa e lucchetto
           Px.line(ctx, x - 9 + shake, 182, x + 9 + shake, 204, 3, PAL.ink); Px.line(ctx, x + 9 + shake, 182, x - 9 + shake, 204, 3, PAL.ink);
           Px.line(ctx, x - 9 + shake, 182, x + 9 + shake, 204, 1.5, PAL.red); Px.line(ctx, x + 9 + shake, 182, x - 9 + shake, 204, 1.5, PAL.red);
