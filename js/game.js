@@ -249,14 +249,34 @@ function GameScene(app, outfit) {
       let lines = d.pz.question, col = '#ffffff';
       if (d.state === 'anim' && d.result === 'right' && d.t > 0.6) { lines = ['GIUSTO! BRAVA!']; col = '#7ee08f'; }
       if (d.state === 'anim' && d.result === 'wrong' && d.t > 0.7) { lines = ['PORTA CHIUSA!']; col = '#ff8a9a'; }
-      const mw = Math.min(W - 6, Math.max(...lines.map((l) => Px.textWidth(l, 2))) + 14), mh = 6 + lines.length * 10;
-      const my = 102 - mh;
+      // risposte per esteso (domande con "answers"): sotto il quesito, a capo automatico, A/B/C come sulle porte
+      const AF = 1.25, AMAX = W - 6 - 14;
+      let ans = null;
+      if (lines === d.pz.question && d.pz.answers) {
+        ans = [];
+        for (const a of d.pz.answers) {
+          let cur = '', first = true;
+          for (const w of a.split(' ')) {
+            const t = cur ? cur + ' ' + w : w;
+            if (cur && Px.textWidth((first ? '' : '   ') + t, AF) > AMAX) { ans.push((first ? '' : '   ') + cur); cur = w; first = false; } else cur = t;
+          }
+          ans.push((first ? '' : '   ') + cur);
+        }
+      }
+      const LH = 8, extra = ans ? ans.length * LH + 6 : 0;
+      const mw = Math.min(W - 6, Math.max(...lines.map((l) => Px.textWidth(l, 2)), ...(ans || []).map((l) => Px.textWidth(l, AF))) + 14), mh = 6 + lines.length * 10 + extra;
+      const bottom = ans ? 136 : 102, my = bottom - mh;
       ctx.globalAlpha = pop;
       Px.rect(ctx, 90 - mw / 2, my, mw, mh, PAL.ink); Px.rect(ctx, 90 - mw / 2 + 1, my + 1, mw - 2, mh - 2, '#1f3a7a');
       Px.rect(ctx, 90 - mw / 2 + 1, my + 1, mw - 2, 2, '#4a69b0');
       lines.forEach((l, i) => Px.text(ctx, l, 90, my + 5 + i * 10, col, 2, 'center', '#0e1a3d'));
+      if (ans) {
+        const ay = my + 5 + lines.length * 10 + 2;
+        Px.rect(ctx, 90 - mw / 2 + 5, ay - 2, mw - 10, 0.8, '#4a69b0');
+        ans.forEach((l, i) => Px.text(ctx, l, 90 - mw / 2 + 7, ay + 1 + i * LH, '#fff3b0', AF, 'left', '#0e1a3d'));
+      }
       ctx.globalAlpha = 1;
-      if (d.state === 'ask' && Math.floor(g.frameT * 2) % 2 === 0) Px.text(ctx, 'TOCCA LA PORTA', 90, 108, '#ffffff', 1, 'center', PAL.ink);
+      if (d.state === 'ask' && Math.floor(g.frameT * 2) % 2 === 0) Px.text(ctx, 'TOCCA LA PORTA', 90, ans ? 139 : 108, '#ffffff', 1, 'center', PAL.ink);
     }
     // Martina
     let hx = World.laneXf(g.laneF, 1), feet = PY, k = HK, pose = 'stand', alpha = 1;

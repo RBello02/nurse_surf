@@ -31,6 +31,7 @@ const CFG = {
   // Indovinelli delle tre porte. A atCfu la corsa si ferma. Risposta giusta (right: true) = si entra e si prosegue,
   // sbagliata = la porta resta chiusa e l'infermiera fa la puntura (fine partita).
   // kind: 'sleep' | 'talk' | 'eat' (porte con disegno) oppure 'A' | 'B' | 'C' (porte con lettera, per domande scritte).
+  // answers (facoltativo): risposte per esteso mostrate sotto la domanda (A/B/C come le porte).
   // zone: 'hospital' = la domanda arriva in ospedale (prima dell'universita'); senza zone arriva all'universita'.
   // label: max 9 caratteri. question: una o due righe (max ~26 caratteri). poison: dopo la puntura Martina diventa verde e gigantesca (sprite "big" in hero.js).
   DOOR: {
@@ -43,7 +44,8 @@ const CFG = {
         { kind: 'A', label: 'INFERMIERE' }, { kind: 'B', label: 'MATERASSI' }, { kind: 'C', label: 'DEFUNTO', right: true }] },
       { atCfu: 125, question: ['UROLOGIA: EMATURIA INDOLORE', 'IN UN FUMATORE DI 60 ANNI.', 'PRIMO SOSPETTO?'], poison: true, doors: [
         { kind: 'A', label: 'VESCICA', right: true }, { kind: 'B', label: 'PROSTATA' }, { kind: 'C', label: 'CALCOLI' }] },
-      { atCfu: 140, question: ["QUAL E' IL VERO MIRACOLO", 'DI QUESTA LAUREA?'], poison: true, doors: [
+      { atCfu: 140, question: ["QUAL E' IL VERO MIRACOLO", 'DI QUESTA LAUREA?'], poison: true,
+        answers: ['A. AVER IMPARATO TUTTO IL PROGRAMMA', 'B. ESSERE SOPRAVVISSUTA A ESAMI E TIROCINIO', "C. NON AVER ANCORA LITIGATO CON TUTTA L'UNIVERSITA'"], doors: [
         { kind: 'A', label: 'IMPARATO' }, { kind: 'B', label: 'SOPRAVVIVO' }, { kind: 'C', label: 'NO LITI', right: true }] }
     ]
   },
