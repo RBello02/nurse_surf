@@ -23,11 +23,11 @@ const CFG = {
   CHASER_START_GAP: 0.55,  // 0..1, distanza dell'inseguitrice (1 = lontanissima)
   CHASER_CLOSE_STEP: 0.22, // quanto si avvicina dopo ogni errore
   MAX_HITS: 3,
-  // Obiettivo: 150 CFU totali. Ogni medaglietta ne vale CFU_PER_MEDAL.
+  // Obiettivo: 180 CFU totali. Ogni medaglietta ne vale CFU_PER_MEDAL.
   // A UNI_AT_CFU l'ospedale finisce e comincia l'universita'; a CFU_GOAL si apre il corridoio del finale.
-  CFU_GOAL: 150,
+  CFU_GOAL: 180,
   CFU_PER_MEDAL: 3,
-  UNI_AT_CFU: 60,
+  UNI_AT_CFU: 72,
   // Indovinelli delle tre porte. A atCfu la corsa si ferma. Risposta giusta (right: true) = si entra e si prosegue,
   // sbagliata = la porta resta chiusa e l'infermiera fa la puntura (fine partita).
   // kind: 'sleep' | 'talk' | 'eat' (porte con disegno) oppure 'A' | 'B' | 'C' (porte con lettera, per domande scritte).
@@ -36,15 +36,15 @@ const CFG = {
   // label: max 9 caratteri. question: una o due righe (max ~26 caratteri). poison: dopo la puntura Martina diventa verde e gigantesca (sprite "big" in hero.js).
   DOOR: {
     puzzles: [
-      { atCfu: 30, zone: 'hospital', question: ["COSA TI CHIESE L'INFERMIERE", 'DURANTE IL TIROCINIO?'], poison: true, doors: [
+      { atCfu: 36, zone: 'hospital', question: ["COSA TI CHIESE L'INFERMIERE", 'DURANTE IL TIROCINIO?'], poison: true, doors: [
         { kind: 'A', label: 'SINCOPE', right: true }, { kind: 'B', label: 'EMBOLIA' }, { kind: 'C', label: 'ISCHEMIA' }] },
-      { atCfu: 45, zone: 'hospital', question: ["QUAL E' STATO IL TUO PASTO", "PIU' DISCUTIBILE IN REPARTO?"], poison: true, doors: [
+      { atCfu: 54, zone: 'hospital', question: ["QUAL E' STATO IL TUO PASTO", "PIU' DISCUTIBILE IN REPARTO?"], poison: true, doors: [
         { kind: 'A', label: 'PASTA' }, { kind: 'B', label: 'POLLO ROSA', right: true }, { kind: 'C', label: "PURE'" }] },
-      { atCfu: 105, question: ['IN UN ARMADIO DEL REPARTO', 'TI SIEDI DI NASCOSTO.', 'COSA SENTI SOTTO DI TE?'], poison: true, doors: [
+      { atCfu: 126, question: ['IN UN ARMADIO DEL REPARTO', 'TI SIEDI DI NASCOSTO.', 'COSA SENTI SOTTO DI TE?'], poison: true, doors: [
         { kind: 'A', label: 'INFERMIERE' }, { kind: 'B', label: 'MATERASSI' }, { kind: 'C', label: 'DEFUNTO', right: true }] },
-      { atCfu: 125, question: ['UROLOGIA: EMATURIA INDOLORE', 'IN UN FUMATORE DI 60 ANNI.', 'PRIMO SOSPETTO?'], poison: true, doors: [
+      { atCfu: 150, question: ['UROLOGIA: EMATURIA INDOLORE', 'IN UN FUMATORE DI 60 ANNI.', 'PRIMO SOSPETTO?'], poison: true, doors: [
         { kind: 'A', label: 'VESCICA', right: true }, { kind: 'B', label: 'PROSTATA' }, { kind: 'C', label: 'CALCOLI' }] },
-      { atCfu: 140, question: ["QUAL E' IL VERO MIRACOLO", 'DI QUESTA LAUREA?'], poison: true,
+      { atCfu: 168, question: ["QUAL E' IL VERO MIRACOLO", 'DI QUESTA LAUREA?'], poison: true,
         answers: ['A. AVER IMPARATO TUTTO IL PROGRAMMA', 'B. ESSERE SOPRAVVISSUTA A ESAMI E TIROCINIO', "C. NON AVER ANCORA LITIGATO CON TUTTA L'UNIVERSITA'"], doors: [
         { kind: 'A', label: 'IMPARATO' }, { kind: 'B', label: 'SOPRAVVIVO' }, { kind: 'C', label: 'NO LITI', right: true }] }
     ]
