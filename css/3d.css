@@ -16,7 +16,7 @@ canvas#game3d { position: absolute; inset: 0; width: 100%; height: 100%; display
 .btn.blue { background: linear-gradient(#78aaf2, #2f63b8); box-shadow: 0 1.3cqw 0 #1d417f, 0 2.4cqw 3cqw rgba(0,0,0,.35), inset 0 .5cqw 0 rgba(255,255,255,.5); }
 .btn.gold { background: linear-gradient(#ffe78a, #f0b020); color: #3a2a00; text-shadow: none; box-shadow: 0 1.3cqw 0 #a87408, 0 2.4cqw 3cqw rgba(0,0,0,.35), inset 0 .5cqw 0 rgba(255,255,255,.6); }
 .btn.sq { width: 9.5cqw; height: 9.5cqw; padding: 0; font-size: 5cqw; border-radius: 2.6cqw; }
-.glass { background: linear-gradient(rgba(45,64,104,.78), rgba(14,22,44,.8)); border: .35cqw solid rgba(255,255,255,.28); border-radius: 3.4cqw; box-shadow: 0 2cqw 5cqw rgba(0,0,0,.4), inset 0 .6cqw 0 rgba(255,255,255,.18); backdrop-filter: blur(1.2cqw); }
+.glass { background: linear-gradient(rgba(45,64,104,.78), rgba(14,22,44,.8)); border: .35cqw solid rgba(255,255,255,.28); border-radius: 3.4cqw; box-shadow: 0 2cqw 5cqw rgba(0,0,0,.4), inset 0 .6cqw 0 rgba(255,255,255,.18); }
 .title { font-weight: 900; text-transform: uppercase; text-shadow: 0 .8cqw 0 rgba(0,0,0,.45), 0 0 3cqw rgba(0,0,0,.5); }
 
 /* menu */
@@ -100,3 +100,15 @@ canvas#game3d { position: absolute; inset: 0; width: 100%; height: 100%; display
 #fin .b { position: absolute; left: 12cqw; right: 12cqw; bottom: 6cqw; display: flex; flex-direction: column; gap: 3cqw; animation: tin .8s both; }
 @keyframes tin { from { transform: translateY(-8cqw) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes wave { 50% { transform: translateY(-1.4cqw); } }
+
+/* cerimonia di laurea */
+.proc { position: absolute; left: 0; right: 0; top: 18cqw; text-align: center; font-weight: 900; text-transform: uppercase; animation: tin .6s both; pointer-events: none; }
+.proc .l0 { font-size: 9cqw; color: #fff3b0; -webkit-text-stroke: 1cqw #3a0a16; paint-order: stroke fill; text-shadow: 0 1cqw 0 #3a0a16; }
+.proc .l1 { margin-top: 2cqw; font-size: 5.6cqw; color: #fff; text-shadow: 0 .7cqw 0 #3a0a16, 0 0 3cqw #000; }
+.proc.dots .l0 { font-size: 16cqw; letter-spacing: .1em; animation: blink .5s infinite; }
+.proc.big { top: 12cqw; }
+.proc.big .l0 { font-size: 12.5cqw; color: #f6c344; }
+.proc.big .l1 { font-size: 15cqw; color: #fff; -webkit-text-stroke: 1.2cqw #3a0a16; paint-order: stroke fill; margin-top: 0; }
+.proc.big .l2 { margin-top: 1cqw; font-size: 5.4cqw; color: #fff3b0; text-shadow: 0 .7cqw 0 #3a0a16, 0 0 3cqw #000; }
+.proc.small { opacity: 0; transition: opacity .8s; }
+.hint-skip { position: absolute; left: 0; right: 0; bottom: 6cqw; text-align: center; font-weight: 900; font-size: 3.4cqw; opacity: .7; text-shadow: 0 .5cqw 0 #10151f; animation: blink 1.4s infinite; }

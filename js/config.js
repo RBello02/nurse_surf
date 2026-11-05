@@ -69,7 +69,10 @@ const CFG = {
     hallBanner: 'LAUREA',
     chaserLine: 'BRAVA!',
     subtitle: 'BRAVISSIMA MARTINA!',   // lascia '' per non mostrarlo
-    title: 'CONGRATULAZIONI!'
+    title: 'CONGRATULAZIONI!',
+    // Cerimonia della versione 3D: didascalie in sequenza, poi la proclamazione
+    proclaim: [['AULA MAGNA', 'SEDUTA DI LAUREA'], ['VISTI I 180 CFU,', 'GLI ESAMI E IL TIROCINIO...'], ['LA COMMISSIONE', 'PROCLAMA...']],
+    doctor: ['DOTTORESSA', 'MARTINA', "IN INFERMIERISTICA!"]
   },
   // Scena iniziale (testi dei fumetti)
   INTRO: {

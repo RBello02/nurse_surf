@@ -1,7 +1,7 @@
 // Nurse Surf 3D: avvio, scene (menu, intro, gioco, finale) e interfaccia. Usa le regole di js/config.js (CFG).
 import { THREE, clamp, lerp, ease, easeOut, rnd, pick, lam, std, box, rbox, cyl, sph, labelTex, canvasTex } from './util.js';
 import { buildMartina, setForm, face, pose } from './martina.js';
-import { buildNurse, nursePose } from './nurse.js';
+import { buildNurse, nursePose, buildProf, profPose } from './nurse.js';
 import { makeProp, makeMedal, makeHint } from './props3d.js';
 import { buildWorld, U, HALF_W, LANES } from './world.js';
 import { createParticles } from './fx3d.js';
@@ -12,7 +12,7 @@ const canvas = document.getElementById('game3d');
 const ui = document.getElementById('ui');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-let pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+let pixelRatio = Math.min(window.devicePixelRatio || 1, 1.75);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xdff2f6);
 scene.fog = new THREE.Fog(0xdff2f6, 24, 72);
@@ -69,6 +69,17 @@ function resetWorld() {
 function clearActors() { for (const c of scene.children.slice()) if (c.userData.actor) scene.remove(c); }
 const actor = (o) => { o.userData.actor = true; scene.add(o); return o; };
 
+// ---------------------------------------------------------------- cache degli oggetti (niente costruzioni durante la corsa)
+const TPL = {};
+function getProp(type) {
+  const t = TPL[type] || (TPL[type] = makeProp(type));
+  return { root: t.root.clone(true), kind: t.kind, len: t.len };
+}
+function getMedal() {
+  const t = TPL.__medal || (TPL.__medal = makeMedal());
+  const root = t.root.clone(true); return { root, spin: root.children[0] };
+}
+
 // ---------------------------------------------------------------- tabelle del gioco
 const SETS = {
   hospital: { jump: ['wetsign', 'bucket', 'boxes', 'barrier'], block: ['gurney1', 'gurney2', 'wheelchair', 'cart', 'vending'], slide: ['rx', 'lab', 'cardio', 'pedia'] },
@@ -118,7 +129,7 @@ SCENES.menu = () => {
   };
   S.update = (dt) => {
     t += dt; pose(M, 'stand', t); M.root.rotation.y = Math.sin(t * 0.8) * 0.35;
-    setCam(new THREE.Vector3(Math.sin(t * 0.35) * 0.9, 1.45, -3.7), new THREE.Vector3(0, 0.95, 0), 0, dt);
+    setCam(new THREE.Vector3(Math.sin(t * 0.35) * 0.7, 1.35, -2.7), new THREE.Vector3(0, 1.0, 0), 0, dt);
   };
   return S;
 };
@@ -183,7 +194,7 @@ SCENES.game = (opt) => {
     objs: [], nextRowW: 2.4, uniGate: false, doorIdx: 0, hits: 0, cfu: 0, healCount: 0, invul: 0, sinceHit: 0,
     gap: CFG.CHASER_START_GAP, gapT: CFG.CHASER_START_GAP, nurseX: 0,
     phase: 'run', phaseT: 0, bubble: '', bubbleT: 0, score: 0, finale: false, paused: false, ended: false,
-    gateW: null, uniW: null, finaleDoor: null, door: null, c: null, t: 0, bannerT: 0, tutT: 7
+    pre: {}, warm: [], tasks: [], gateW: null, uniW: null, finaleDoor: null, door: null, c: null, t: 0, bannerT: 0, tutT: 7
   };
   S.g = g;
 
@@ -202,6 +213,13 @@ SCENES.game = (opt) => {
     cfuEl = $('<div class="cfu"><div class="med"></div><b>0/' + CFG.CFU_GOAL + ' CFU</b></div>'); hud.appendChild(cfuEl);
     tutEl = $('<div class="tut glass"><i>◀▶</i> CAMBIA CORSIA<br><i>▲</i> SALTA &nbsp; <i>▼</i> SCIVOLA</div>'); hud.appendChild(tutEl);
     updateHud(); Sfx.start(); Sfx.startMusic();
+    const warm = (o) => { o.position.set(0, 0, -66); scene.add(o); g.warm.push({ o, n: 3 }); };
+    ['hospital', 'uni'].forEach((z) => Object.values(SETS[z]).flat().forEach((t) => g.tasks.push(() => { const p = getProp(t); warm(p.root); })));
+    g.tasks.push(() => { warm(getMedal().root); });
+    CFG.DOOR.puzzles.forEach((pz, i) => g.tasks.push(() => { const doors = pz.doors.slice().sort(() => Math.random() - 0.5); const wall = world.makeDoorWall(doors, doors.map((d) => d.label)); g.pre['wall' + i] = { doors, wall }; warm(wall); }));
+    g.tasks.push(() => { g.pre.gateUni = world.makeGate(CFG.ZONES.uni.gate); warm(g.pre.gateUni); });
+    g.tasks.push(() => { g.pre.gateFin = world.makeGate(CFG.FINALE.gateText); warm(g.pre.gateFin); });
+    g.tasks.push(() => { g.pre.finDoor = world.makeFinaleDoor(CFG.FINALE.doorText); warm(g.pre.finDoor); });
     camPos.set(0, 3.7, 6.6); camLook.set(0, 1.4, -9);
   };
   S.leave = () => { Sfx.stopMusic(); };
@@ -209,8 +227,8 @@ SCENES.game = (opt) => {
   // ---- generazione ----
   const KINDS = ['jump', 'slide', 'block'];
   function add(lane, type, w) {
-    if (type === 'cfu') { const m = makeMedal(); track.add(m.root); g.objs.push({ lane, w, medal: m, root: m.root, done: false, seed: Math.random() * 6.28, kind: 'cfu', len: 0.8 }); return; }
-    const p = makeProp(type); track.add(p.root); let hint = null;
+    if (type === 'cfu') { const m = getMedal(); track.add(m.root); g.objs.push({ lane, w, medal: m, root: m.root, done: false, seed: Math.random() * 6.28, kind: 'cfu', len: 0.8 }); return; }
+    const p = getProp(type); track.add(p.root); let hint = null;
     if (p.kind !== 'slide') { hint = makeHint(p.kind); hint.position.set(0, p.kind === 'block' ? 2.15 : 1.6, 0); p.root.add(hint); }
     g.objs.push({ lane, w, root: p.root, kind: p.kind, len: p.len, done: false, hint });
   }
@@ -244,25 +262,26 @@ SCENES.game = (opt) => {
   function startUni() {
     g.uniGate = true; g.uniW = Math.ceil(g.nextRowW + 0.5); g.nextRowW = g.uniW + 0.8;
     world.gateIdx = g.uniW;
-    const gate = world.makeGate(CFG.ZONES.uni.gate); world.anchor(gate, g.uniW + 0.5);
+    const gate = g.pre.gateUni || world.makeGate(CFG.ZONES.uni.gate); world.anchor(gate, g.uniW + 0.5);
   }
   function startCorridor() {
     if (g.finale) return;
     g.finale = true; g.phase = 'corridor';
     const gw = g.nextRowW + 0.5;
-    world.anchor(world.makeGate(CFG.FINALE.gateText), gw);
+    world.anchor(g.pre.gateFin || world.makeGate(CFG.FINALE.gateText), gw);
     const seq = [1, 1, 0, 1, 2, 1, 1, 0, 1, 2, 1];
     seq.forEach((l, i) => add(l, 'cfu', gw + 0.5 + i * 0.3));
     g.finaleDoor = { w: gw + 0.5 + seq.length * 0.3 + 1.0 };
-    const d = world.makeFinaleDoor(CFG.FINALE.doorText); world.anchor(d, g.finaleDoor.w); g.finaleDoor.obj = d; g.finaleDoor.open = 0;
+    const d = g.pre.finDoor || world.makeFinaleDoor(CFG.FINALE.doorText); world.anchor(d, g.finaleDoor.w); g.finaleDoor.obj = d; g.finaleDoor.open = 0;
     Sfx.warn();
   }
 
   // ---- indovinello a tre porte ----
   function startDoor(pz) {
-    const doors = pz.doors.slice().sort(() => Math.random() - 0.5);
+    const pre = g.pre['wall' + g.doorIdx];
+    const doors = pre ? pre.doors : pz.doors.slice().sort(() => Math.random() - 0.5);
     const w = g.nextRowW + 1.0;
-    const wall = world.makeDoorWall(doors, doors.map((d) => d.label));
+    const wall = pre ? pre.wall : world.makeDoorWall(doors, doors.map((d) => d.label));
     world.anchor(wall, w);
     g.phase = 'door'; if (tutEl) { tutEl.remove(); tutEl = null; }
     g.door = { w, wall, pz, doors, state: 'run', t: 0, sel: 1, pick: -1, stop: 7.0 };
@@ -468,6 +487,8 @@ SCENES.game = (opt) => {
   S.update = (dt) => {
     if (g.paused) return;
     g.t += dt;
+    g.frame = (g.frame || 0) + 1; if (g.tasks.length && g.frame % 6 === 0) g.tasks.shift()();
+    for (let i = g.warm.length - 1; i >= 0; i--) { if (--g.warm[i].n <= 0) { scene.remove(g.warm[i].o); g.warm.splice(i, 1); } }
     const run = g.phase === 'run' || g.phase === 'corridor' || g.phase === 'door';
     if (g.tutT > 0 && g.phase === 'run') { g.tutT -= dt; if (g.tutT < 0 && tutEl) { tutEl.remove(); tutEl = null; } else if (tutEl && g.tutT < 1) tutEl.style.opacity = g.tutT; }
     if (g.phase !== 'catch' && g.phase !== 'over') {
@@ -554,50 +575,106 @@ SCENES.game = (opt) => {
   return S;
 };
 
-// ---------------------------------------------------------------- FINALE: la cerimonia nell'Aula Magna
+// ---------------------------------------------------------------- FINALE: la cerimonia di laurea nell'Aula Magna
 SCENES.finale = (opt) => {
-  const S = {}; let M, N, hall, t = 0, fwT = 0;
+  const S = {}; let M, N, profs = [], hall, hats = [], t = 0, fwT = 0, capEl, finEl, stage2 = 0, revealed = false, shown = false;
+  const caps = CFG.FINALE.proclaim || [['AULA MAGNA', 'SEDUTA DI LAUREA'], ['LA COMMISSIONE', 'PROCLAMA...']];
+  const doctor = CFG.FINALE.doctor || ['DOTTORESSA', CFG.NAME, 'IN INFERMIERISTICA!'];
+  const T_CAP = 2.2, T_DRUM = caps.length * T_CAP, T_REVEAL = T_DRUM + 2.0;
+  const showCap = (lines, cls = '') => {
+    if (capEl) capEl.remove();
+    capEl = $(`<div class="proc ${cls}">${lines.map((l, i) => `<div class="l${i}">${esc(l)}</div>`).join('')}</div>`); ui.appendChild(capEl);
+  };
+  function hatMesh() {
+    const g = new THREE.Group(), blk = lam(0x15151b);
+    g.add(box(0.5, 0.035, 0.5, blk, 0, 0.12, 0)); g.add(cyl(0.17, 0.2, 0.14, blk, 0, 0.04, 0, 16)); g.add(sph(0.025, lam(0xf6c344), 0.24, 0.1, 0.24));
+    g.add(box(0.012, 0.012, 0.25, lam(0xf6c344), 0.24, 0.0, 0.24)); return g;
+  }
   S.enter = () => {
     clearActors(); world.root.visible = false;
-    scene.background.set(0x2a0a14); scene.fog.color.set(0x2a0a14); scene.fog.near = 18; scene.fog.far = 60;
+    scene.background.set(0x2a0a14); scene.fog.color.set(0x2a0a14); scene.fog.near = 20; scene.fog.far = 64;
     hall = actor(new THREE.Group());
     const wood = lam(0xb98f52), red = lam(0x8c1a2f), gold = lam(0xf6c344);
-    hall.add(box(26, 0.2, 30, wood, 0, -0.1, -2));
-    hall.add(box(2.6, 0.22, 24, lam(0xa8203a), 0, 0.01, 2));
-    hall.add(box(9, 0.45, 6, lam(0x6b4a2e), 0, 0.22, -5.5)); hall.add(box(9.4, 0.12, 6.4, gold, 0, 0.46, -5.5));
+    hall.add(box(26, 0.2, 34, wood, 0, -0.1, -2));
+    hall.add(box(2.6, 0.22, 26, lam(0xa8203a), 0, 0.01, 2));
+    hall.add(box(11, 0.5, 7, lam(0x6b4a2e), 0, 0.25, -6.2)); hall.add(box(11.4, 0.1, 7.4, gold, 0, 0.52, -6.2));
     hall.add(box(26, 11, 0.5, lam(0x5a0f1f), 0, 5.5, -11));
     for (let i = -6; i <= 6; i++) hall.add(box(1.0, 9.5, 0.5, i % 2 ? red : lam(0x741528), i * 1.9, 5.2, -10.6));
     hall.add(box(26, 0.7, 0.6, gold, 0, 9.9, -10.4));
-    for (const s of [-1, 1]) hall.add(box(0.5, 11, 30, lam(0x3a0a16), s * 12.5, 5.5, -2));
+    for (const s of [-1, 1]) hall.add(box(0.5, 11, 34, lam(0x3a0a16), s * 12.5, 5.5, -2));
     const ban = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 1.5), new THREE.MeshBasicMaterial({ map: labelTex(CFG.FINALE.hallBanner, '#7d1527', '#fff3b0', 1024, 240) })); ban.position.set(0, 7.3, -10.3); hall.add(ban);
-    for (const s of [-1, 1]) for (let r = 0; r < 3; r++) for (let k = 0; k < 6; k++) {              // pubblico ai lati
-      const x = s * (5.4 + r * 1.5), z = -9 + k * 1.7, col = pick([0xe0344b, 0x3e7bd6, 0x3bb273, 0xf6c344, 0x8e5bd1, 0xf28c28]);
+    for (let k = 0; k < 5; k++) { const lamp = sph(0.28, new THREE.MeshBasicMaterial({ color: 0xfff1b8 }), -8 + k * 4, 8.6, -4); hall.add(lamp); }
+    // tavolo della commissione (dietro Martina) con tovaglia e targhette
+    hall.add(box(7.4, 0.95, 1.3, lam(0x5a0f1f), 0, 1.0, -8.3)); hall.add(box(7.6, 0.07, 1.5, lam(0x3a2a1a), 0, 1.5, -8.3)); hall.add(box(7.2, 0.5, 0.04, lam(0xf6c344), 0, 0.95, -7.63));
+    [-2.4, 0, 2.4].forEach((x, i) => { const P = buildProf(i); P.root.position.set(x, 0.52, -8.95); P.root.rotation.y = Math.PI; P.baseY = 0.52; actor(P.root); profs.push(P); });
+    // pubblico ai lati
+    for (const s of [-1, 1]) for (let r = 0; r < 3; r++) for (let k = 0; k < 7; k++) {
+      const x = s * (6.4 + r * 1.6), z = -9 + k * 1.8, col = pick([0xe0344b, 0x3e7bd6, 0x3bb273, 0xf6c344, 0x8e5bd1, 0xf28c28]);
       hall.add(rbox(0.9, 0.5, 0.8, 0.1, lam(0x4a2f1a), x, 0.35, z)); hall.add(rbox(0.6, 0.7, 0.4, 0.15, lam(col), x, 0.95, z)); hall.add(sph(0.22, lam(pick([0xf2c9a5, 0xd9a982, 0x8d5a3b])), x, 1.5, z)); hall.add(sph(0.23, lam(pick([0x2a1810, 0x5a3a26, 0xc9a36a, 0x999999])), x, 1.57, z + (s > 0 ? 0.03 : -0.03), 1, 0.7, 1));
     }
-    M = buildMartina(opt.outfit || 'casual'); M.root.position.set(0, 0.52, -5.5); M.yaw = 0; actor(M.root);
-    // corona d'alloro
-    const wreath = new THREE.Group(); wreath.position.set(0, 0.27, 0.01); M.head.add(wreath);
-    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, l = sph(0.045, lam(i % 2 ? 0x3d9a4c : 0x2f7d3b), Math.cos(a) * 0.2, 0, Math.sin(a) * 0.2, 1.5, 0.5, 0.8); l.rotation.y = -a; wreath.add(l); }
-    wreath.add(sph(0.04, lam(0x7a1f35), 0, 0, 0.2, 1.6, 1, 1));
-    N = buildNurse(); N.syringe.visible = false; N.root.position.set(2.2, 0.52, -5.2); N.root.rotation.y = -0.4; actor(N.root);
-    const fin = $(`<div id="fin"><div class="t">${[...CFG.FINALE.title].map((c, i) => `<span style="animation-delay:${i * 0.07}s">${esc(c)}</span>`).join('')}</div>${CFG.FINALE.subtitle ? `<div class="s">${esc(CFG.FINALE.subtitle)}</div>` : ''}<div class="sc">PUNTI ${opt.score}  ·  CFU ${opt.cfu}/${CFG.CFU_GOAL}</div><div class="b"><button class="btn" id="again">GIOCA ANCORA</button><button class="btn blue" id="home">MENU</button></div></div>`);
-    fin.querySelector('#again').onclick = () => { Sfx.select(); app.go('game', { outfit: opt.outfit }); };
-    fin.querySelector('#home').onclick = () => { Sfx.select(); app.go('menu'); };
-    ui.appendChild(fin);
-    const say = $(`<div id="dlg"><div class="say" style="left:70%;top:66%;transform:translate(-50%,-100%)">${esc(CFG.FINALE.chaserLine)}</div></div>`); ui.appendChild(say);
-    const best = Save.get().best || 0; if (opt.score > best) Save.set({ best: opt.score });
-    Sfx.fanfare(); flash('#fff7d6', 0.8);
-    camPos.set(0, 3.5, 4); camLook.set(0, 1.5, -5.5);
+    M = buildMartina(opt.outfit || 'casual'); M.root.position.set(0, 0.52, -5.2); M.yaw = Math.PI; actor(M.root);
+    const wreath = new THREE.Group(); wreath.position.set(0, 0.2, 0.0); M.head.add(wreath);
+    for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2, l = sph(0.05, lam(i % 2 ? 0x3d9a4c : 0x2f7d3b), Math.cos(a) * 0.205, 0, Math.sin(a) * 0.205, 1.5, 0.5, 0.8); l.rotation.y = -a; wreath.add(l); }
+    wreath.add(sph(0.045, lam(0x7a1f35), 0, -0.01, -0.21, 1.6, 1, 1));
+    N = buildNurse(); N.syringe.visible = false; N.root.position.set(2.0, 0.52, -4.6); N.root.rotation.y = Math.PI + 0.35; actor(N.root);
+    const bouquet = new THREE.Group(); for (let i = 0; i < 7; i++) bouquet.add(sph(0.06, lam(pick([0xe0344b, 0xf08fb0, 0xffd23f, 0xffffff])), Math.cos(i) * 0.09, 0.02 + (i % 3) * 0.04, Math.sin(i) * 0.09)); bouquet.position.set(0.0, 0.3, -0.06); N.arms[0].el.add(bouquet); S.bouquet = bouquet;
+    best_save();
+    camPos.set(0, 2.6, 1.8); camLook.set(0, 1.7, -6);
+    Sfx.start(); showCap(caps[0]);
+    ui.appendChild($('<div class="hint-skip">TOCCA PER SALTARE</div>'));
   };
+  function best_save() { const b = Save.get().best || 0; if (opt.score > b) Save.set({ best: opt.score }); }
+  S.input = (a) => { if ((a === 'tap' || a === 'confirm') && t < T_REVEAL + 0.6 && !revealed) { t = T_REVEAL - 0.01; } };
   S.leave = () => { world.root.visible = true; scene.fog.near = 24; scene.fog.far = 72; };
+  function reveal() {
+    revealed = true; { const h = ui.querySelector('.hint-skip'); if (h) h.remove(); } Sfx.fanfare(); flash('#fff7d6', 0.7); shakeAmt = 0.3;
+    if (capEl) capEl.remove();
+    capEl = $(`<div class="proc big"><div class="l0">${esc(doctor[0])}</div><div class="l1">${esc(doctor[1])}</div><div class="l2">${esc(doctor[2])}</div></div>`); ui.appendChild(capEl);
+    for (let i = 0; i < 16; i++) { const h = hatMesh(); h.position.set(rnd(-2.5, 2.5), 1.4, -5.2 + rnd(-0.8, 0.8)); h.userData.v = new THREE.Vector3(rnd(-2.5, 2.5), rnd(7, 11), rnd(-1.5, 3)); h.userData.w = new THREE.Vector3(rnd(-6, 6), rnd(-8, 8), rnd(-6, 6)); hall.add(h); hats.push(h); }
+    for (const x of [-4.5, 4.5]) for (let i = 0; i < 90; i++) fx.emit(x, 0.8, -4.5, -Math.sign(x) * rnd(1, 4.5), rnd(6, 11), rnd(-1.5, 1.5), pick([0xe0344b, 0xf6c344, 0x3bb273, 0x3e7bd6, 0xffffff, 0xf08fb0]), 3.5, 5, 0.3);
+  }
   S.update = (dt) => {
     t += dt; fwT -= dt;
-    pose(M, 'cheer', t); nursePose(N, 'stand', t); N.arms.forEach((a, i) => { a.sh.rotation.z = (i ? 1 : -1) * (-0.9 + Math.sin(t * 9 + i) * 0.4); });
-    // coriandoli e fuochi d'artificio
-    for (let i = 0; i < 3; i++) fx.emit(rnd(-8, 8), 9, rnd(-10, 2), rnd(-0.4, 0.4), rnd(-1, 0), rnd(-0.4, 0.4), pick([0xe0344b, 0xf6c344, 0x3bb273, 0x3e7bd6, 0xffffff, 0xf08fb0]), 6, 1.6, 0.3);
-    if (fwT <= 0) { fwT = rnd(0.35, 0.8); const col = pick([[0xffe27a, 0xffffff], [0xff6b8a, 0xffd1dc], [0x7fd3ff, 0xffffff], [0x9bff9b, 0xffffff]]); fx.burst(rnd(-5, 5), rnd(5.5, 8), -9, col, 46, 5.5, 1.5, 2.5); Sfx.sparkle(); }
-    const a = Math.sin(t * 0.35) * 0.5, r = lerp(5.4, 4.0, ease(t / 5));
-    setCam(new THREE.Vector3(Math.sin(a) * r, 1.9 + Math.sin(t * 0.5) * 0.15, -5.5 + Math.cos(a) * r), new THREE.Vector3(0, 1.45, -5.5), 3, dt);
+    const yawFace = Math.PI;
+    M.yaw = yawFace;
+    if (!revealed) {
+      pose(M, 'stand', t); face(M, 'smile');
+      profs.forEach((P, i) => profPose(P, 'idle', t, i));
+      nursePose(N, 'stand', t); N.arms.forEach((a, i) => { a.sh.rotation.z = (i ? 1 : -1) * -0.3; });
+      const ci = Math.min(caps.length - 1, Math.floor(t / T_CAP));
+      if (ci !== stage2 && t < T_DRUM) { stage2 = ci; showCap(caps[ci]); Sfx.select(); }
+      if (t >= T_DRUM && !S.drum) { S.drum = true; Sfx.drumroll(); showCap(['...'], 'dots'); }
+      if (t >= T_REVEAL) reveal();
+    } else {
+      const r = t - T_REVEAL;
+      pose(M, 'cheer', t); face(M, 'shout'); if (r > 1.2) face(M, 'smile');
+      profs.forEach((P, i) => profPose(P, 'clap', t, i));
+      nursePose(N, 'stand', t); N.arms.forEach((a, i) => { a.sh.rotation.z = (i ? 1 : -1) * (-0.9 + Math.sin(t * 9 + i) * 0.4); });
+      for (const h of hats) { const u = h.userData; u.v.y -= 9 * dt; h.position.addScaledVector(u.v, dt); h.rotation.x += u.w.x * dt; h.rotation.y += u.w.y * dt; h.rotation.z += u.w.z * dt; if (h.position.y < 0.6 && u.v.y < 0) { u.v.set(0, 0, 0); u.w.set(0, 0, 0); h.position.y = 0.6; } }
+      if (fwT <= 0) { fwT = rnd(0.3, 0.7); const col = pick([[0xffe27a, 0xffffff], [0xff6b8a, 0xffd1dc], [0x7fd3ff, 0xffffff], [0x9bff9b, 0xffffff]]); fx.burst(rnd(-6, 6), rnd(6, 8.6), -9, col, 50, 5.5, 1.6, 2.5); Sfx.sparkle(); }
+      for (let i = 0; i < 3; i++) fx.emit(rnd(-9, 9), 9.5, rnd(-10, 1), rnd(-0.4, 0.4), rnd(-1, 0), rnd(-0.4, 0.4), pick([0xe0344b, 0xf6c344, 0x3bb273, 0x3e7bd6, 0xffffff, 0xf08fb0]), 7, 1.6, 0.3);
+      if (r > 4.2 && !shown) {                                         // dopo la proclamazione: titolo, punti e pulsanti
+        shown = true;
+        finEl = $(`<div id="fin"><div class="t">${[...CFG.FINALE.title].map((c, i) => `<span style="animation-delay:${i * 0.07}s">${esc(c)}</span>`).join('')}</div>${CFG.FINALE.subtitle ? `<div class="s">${esc(CFG.FINALE.subtitle)}</div>` : ''}<div class="sc">PUNTI ${opt.score}  ·  CFU ${opt.cfu}/${CFG.CFU_GOAL}</div><div class="b"><button class="btn" id="again">GIOCA ANCORA</button><button class="btn blue" id="home">MENU</button></div></div>`);
+        finEl.querySelector('#again').onclick = () => { Sfx.select(); app.go('game', { outfit: opt.outfit }); };
+        finEl.querySelector('#home').onclick = () => { Sfx.select(); app.go('menu'); };
+        if (capEl) { capEl.remove(); capEl = null; }
+        ui.appendChild(finEl);
+        const say = $(`<div id="dlg"><div class="say" style="left:76%;top:55%;transform:translate(-50%,-100%)">${esc(CFG.FINALE.chaserLine)}</div></div>`); ui.appendChild(say);
+      }
+    }
+    // camera: panoramica d'apertura, tamburi, poi stacco in primo piano su Martina
+    let cp, cl;
+    if (!revealed) {
+      const k = clamp(t / T_REVEAL, 0, 1);
+      cp = new THREE.Vector3(Math.sin(t * 0.25) * 0.8, lerp(2.6, 1.9, ease(k)), lerp(-0.4, -2.6, ease(k)));
+      cl = new THREE.Vector3(0, lerp(1.7, 1.45, k), -5.4);
+    } else {
+      const r = t - T_REVEAL, k = ease(r / 2.2);
+      cp = new THREE.Vector3(Math.sin(r * 0.5) * 0.9, lerp(1.9, 1.7, k), lerp(-2.6, -3.1, k));
+      cl = new THREE.Vector3(0, lerp(1.45, 1.5, k), -5.2);
+    }
+    setCam(cp, cl, 3, dt);
   };
   return S;
 };

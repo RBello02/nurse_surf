@@ -127,6 +127,8 @@ const Sfx = (() => {
       voice(320, 150, 0.7, 0.25, 0.2, { type: 'sawtooth', formant: 900, q: 1.5, vib: 18, vibDepth: 20 });
       noise(1.0, 0.14, 0);
     },
+    // rullo di tamburi crescente (cerimonia 3D)
+    drumroll() { for (let i = 0; i < 22; i++) noise(0.05, 0.03 + i * 0.006, i * 0.1 - i * i * 0.0018); tone(120, 0.5, 'sine', 0.3, 70, 2.0); },
     warn() { tone(660, 0.1, 'square', 0.05); tone(550, 0.1, 'square', 0.05, null, 0.12); },
     select() { tone(660, 0.07, 'square', 0.06); tone(880, 0.09, 'square', 0.06, null, 0.07); },
     start() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.12, 'square', 0.07, null, i * 0.09)); },
