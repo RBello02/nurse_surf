@@ -7,6 +7,7 @@
     "start": "node server.js",
     "check": "node scripts/check.js",
     "build": "node scripts/build-www.js",
+    "build3d": "node scripts/build3d.js",
     "android:init": "npm run build && npx cap add android",
     "android:sync": "npm run build && npx cap sync android",
     "android:open": "npx cap open android"
@@ -14,6 +15,8 @@
   "devDependencies": {
     "@capacitor/android": "^6.0.0",
     "@capacitor/cli": "^6.0.0",
-    "@capacitor/core": "^6.0.0"
+    "@capacitor/core": "^6.0.0",
+    "esbuild": "^0.28.2",
+    "three": "^0.170.0"
   }
 }
