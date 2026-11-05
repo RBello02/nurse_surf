@@ -1,6 +1,8 @@
 // Martina in 3D, costruita con forme semplici (stile cartoon): stessa faccia, stessi capelli castani raccolti,
 // stesso orecchino d'argento, e le tre divise del gioco. Ha anche le tre trasformazioni dopo la puntura.
 import { THREE, lam, std, mesh, box, rbox, cyl, sph, clamp, lerp, blobShadow } from './util.js';
+import { faceTexture, applyFaceUV } from './face.js';
+import { rot, pos, damp, getDT } from './anim.js';
 
 const HAIR = 0x5a3a26, HAIR_SH = 0x3e281a, SKIN = 0xf2c9a5, GREEN = 0x62c24c;
 const OUT = {
@@ -22,6 +24,16 @@ function hairGrad(geo, yTop, yBot) {
   return geo;
 }
 export const capsule = (r, len, mat, x = 0, y = 0, z = 0) => mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat, x, y, z);
+// arto affusolato (profilo tornito): pts = [[raggio, y], ...] dall'attaccatura verso il basso; fold = pieghe del tessuto
+export function limb(pts, mat, fold = 0, x = 0, y = 0, z = 0) {
+  const v = [new THREE.Vector2(0.001, pts[pts.length - 1][1] - 0.004)];
+  for (let i = pts.length - 1; i >= 0; i--) v.push(new THREE.Vector2(pts[i][0], pts[i][1]));
+  v.push(new THREE.Vector2(0.001, pts[0][1] + 0.004));
+  const g = new THREE.LatheGeometry(v, 26);
+  if (fold) { const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const a = Math.atan2(p.getZ(i), p.getX(i)), k = 1 + fold * Math.sin(a * 5 + p.getY(i) * 9) * (1 - Math.abs(p.getY(i)) * 0.4); p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); } }
+  g.computeVertexNormals();
+  return mesh(g, mat, x, y, z);
+}
 export function torsoGeo(w, d, prof) {                                   // busto tornito (vita stretta, spalle larghe)
   const pts = prof.map(([r, y]) => new THREE.Vector2(r, y));
   const g = new THREE.LatheGeometry(pts, 28); g.scale(w, 1, d); return g;
@@ -33,7 +45,7 @@ export function headGeo() {                                              // sfer
     if (y < 0) { const k = Math.pow(-y / 0.19, 1.4); x *= 1 - 0.3 * k; z *= 1 - 0.14 * k; y *= 1 + 0.05 * k; }
     p.setXYZ(i, x, y, z);
   }
-  g.computeVertexNormals(); g.scale(0.93, 1.1, 0.98); return g;
+  g.computeVertexNormals(); g.scale(0.93, 1.1, 0.98); return applyFaceUV(g);
 }
 
 export function buildMartina(outfit = 'uniforme') {
@@ -54,13 +66,13 @@ export function buildMartina(outfit = 'uniforme') {
     const hip = new THREE.Group(); hip.position.set(side * 0.1, 0.92, 0);
     let thigh, shin;
     const knee = new THREE.Group(); knee.position.y = -0.46; hip.add(knee);
-    if (O.wide) {                                              // pantalone ampio a gamba larga, con piega e risvolto
-      thigh = cyl(0.15, 0.135, 0.46, mats.pants, 0, -0.23, 0, 24); hip.add(thigh);
-      shin = cyl(0.135, 0.105, 0.44, mats.pants, 0, -0.22, 0, 24); knee.add(shin);
-      knee.add(cyl(0.108, 0.108, 0.035, mats.topHi, 0, -0.4, 0, 24));
-    } else {
-      thigh = capsule(0.072, 0.32, mats.pants, 0, -0.23, 0); hip.add(thigh);
-      shin = capsule(0.058, 0.3, mats.pants, 0, -0.23, 0); knee.add(shin);
+    if (O.wide) {                                              // pantalone ampio a gamba larga, con pieghe e risvolto
+      thigh = limb([[0.142, 0], [0.152, -0.1], [0.146, -0.3], [0.138, -0.46]], mats.pants, 0.025); hip.add(thigh);
+      shin = limb([[0.138, 0], [0.142, -0.1], [0.136, -0.3], [0.124, -0.44]], mats.pants, 0.03); knee.add(shin);
+      knee.add(cyl(0.126, 0.126, 0.03, mats.topHi, 0, -0.43, 0, 26));
+    } else {                                                   // gamba con coscia affusolata e polpaccio
+      thigh = limb([[0.082, 0], [0.084, -0.08], [0.07, -0.3], [0.058, -0.46]], mats.pants); hip.add(thigh);
+      shin = limb([[0.058, 0], [0.058, -0.05], [0.054, -0.14], [0.04, -0.32], [0.032, -0.44]], mats.pants); knee.add(shin);
     }
     const foot = new THREE.Group(); foot.position.set(0, -0.43, -0.03); knee.add(foot);
     foot.add(rbox(0.125, 0.07, 0.27, 0.035, mats.shoe, 0, 0.005, -0.03));
@@ -117,13 +129,13 @@ export function buildMartina(outfit = 'uniforme') {
   function arm(side) {
     const sh = new THREE.Group(); sh.position.set(side * 0.255, 0.5, 0);
     sh.add(sph(0.058, mats.top, 0, 0, 0));                                              // spalla
-    const upper = capsule(0.04, 0.2, mats.skin, 0, -0.15, 0); sh.add(upper);
-    const sleeveU = cyl(0.062, 0.054, O.sleeves === 'short' ? 0.15 : 0.28, mats.top, 0, O.sleeves === 'short' ? -0.075 : -0.14, 0, 18); sh.add(sleeveU);
+    const upper = limb([[0.045, 0], [0.046, -0.05], [0.04, -0.14], [0.034, -0.28]], mats.skin); sh.add(upper);
+    const sLen = O.sleeves === 'short' ? 0.15 : 0.28; const sleeveU = limb([[0.062, 0], [0.066, -sLen * 0.4], [0.06, -sLen]], mats.top, O.wide ? 0.04 : 0.01); sh.add(sleeveU);
     const el = new THREE.Group(); el.position.y = -0.28; sh.add(el);
     el.add(sph(0.04, mats.skin, 0, 0, 0));
-    const fore = capsule(0.034, 0.2, mats.skin, 0, -0.14, 0); el.add(fore);
+    const fore = limb([[0.036, 0], [0.036, -0.03], [0.03, -0.14], [0.021, -0.28]], mats.skin); el.add(fore);
     let sleeveF = null;
-    if (O.sleeves !== 'short') { sleeveF = cyl(0.054, 0.046, O.sleeves === 'long' ? 0.23 : 0.09, mats.top, 0, O.sleeves === 'long' ? -0.115 : -0.045, 0, 18); el.add(sleeveF); }
+    if (O.sleeves !== 'short') { const fl = O.sleeves === 'long' ? 0.23 : 0.09; sleeveF = limb([[0.054, 0], [0.056, -fl * 0.4], [O.sleeves === 'long' ? 0.05 : 0.046, -fl]], mats.top, O.wide ? 0.035 : 0.01); el.add(sleeveF); }
     // mano con dita e pollice
     const hand = new THREE.Group(); hand.position.y = -0.285; el.add(hand);
     hand.add(rbox(0.07, 0.07, 0.03, 0.012, mats.skin, 0, -0.01, 0));
@@ -140,7 +152,8 @@ export function buildMartina(outfit = 'uniforme') {
 
   // ---- testa ----
   const head = new THREE.Group(); head.position.y = 0.75; torso.add(head); parts.head = head;
-  head.add(mesh(headGeo(), mats.skin));
+  const faceMat = new THREE.MeshLambertMaterial({ map: faceTexture('smile', false, 'martina') }); mats.face = faceMat;
+  head.add(mesh(headGeo(), faceMat));
   for (const s of [-1, 1]) {                                                              // orecchie e orecchini d'argento
     head.add(sph(0.03, mats.skin, s * 0.176, -0.015, 0.0, 0.5, 1.1, 0.8));
     head.add(sph(0.011, mats.metal, s * 0.182, -0.062, -0.005)); head.add(sph(0.016, mats.metal, s * 0.182, -0.085, -0.005, 0.7, 1.1, 0.7));
@@ -148,39 +161,44 @@ export function buildMartina(outfit = 'uniforme') {
   // capelli: calotta, riga in mezzo, due lunghe ciocche davanti e tenda dietro (tutto con sfumatura caramello)
   const swing = new THREE.Group(); swing.position.y = 0.06; head.add(swing); parts.hairSwing = swing;
   const mk = (geo, yT, yB) => new THREE.Mesh(hairGrad(geo, yT, yB), hairMat);
-  const capBack = mk(new THREE.SphereGeometry(0.208, 32, 20, 0, Math.PI, 0, Math.PI * 0.82), 0.2, -0.6); capBack.scale.set(0.98, 1.1, 1.0); capBack.position.set(0, -0.06, 0.02); swing.add(capBack);
-  const capFront = mk(new THREE.SphereGeometry(0.208, 32, 14, 0, Math.PI, 0, Math.PI * 0.36), 0.2, -0.6); capFront.scale.set(0.98, 1.1, 1.0); capFront.position.set(0, -0.06, 0.005); capFront.rotation.order = 'YXZ'; capFront.rotation.set(0.3, Math.PI, 0); swing.add(capFront);
+  // calotta di capelli con attaccatura alta (fronte libera, riga in mezzo) invece della frangetta
+  const hairCap = (theta, yT, yB) => {
+    const g = new THREE.SphereGeometry(0.208, 36, 22, 0, Math.PI * 2, 0, theta), pp = g.attributes.position;
+    for (let i = 0; i < pp.count; i++) {
+      const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i);
+      if (z + 0.02 < 0.02) { const hl = 0.125 + 0.025 * Math.min(1, Math.pow(Math.abs(x) / 0.19, 3)); if (y * 1.1 < hl) pp.setY(i, hl / 1.1); }
+    }
+    g.computeVertexNormals();
+    return mk(g, yT, yB);
+  };
+  const capBack = hairCap(Math.PI * 0.82, 0.2, -0.6); capBack.scale.set(0.98, 1.1, 1.0); capBack.position.set(0, -0.06, 0.02); swing.add(capBack);
   const part = box(0.006, 0.004, 0.2, mats.hairSh, 0, 0.17, -0.02); part.rotation.x = 0.15;       // riga in mezzo
-  const curtain = mk(new THREE.CylinderGeometry(0.205, 0.2, 0.62, 28, 10, true, -Math.PI * 0.64, Math.PI * 1.28), 0.31, -0.31); curtain.position.set(0, -0.32, 0.0); swing.add(curtain);
-  for (const s of [-1, 1]) {
-    const lock = mk(new THREE.CapsuleGeometry(0.045, 0.52, 4, 10), 0.28, -0.3); lock.scale.set(0.8, 1, 0.42);
-    lock.position.set(s * 0.175, -0.2, -0.085); lock.rotation.set(0.03, 0, s * 0.1); head.add(lock);
+  if (outfit === 'casual') {
+    // vestito di laurea: capelli RACCOLTI in uno chignon alto con elastico bordeaux, riga in mezzo e due ciocche libere sul viso
+    capBack.geometry.dispose(); capBack.geometry = hairCap(Math.PI * 0.64, 0.2, -0.3).geometry;
+    const bun = mk(new THREE.SphereGeometry(0.092, 24, 18), 0.1, -0.1); bun.scale.set(1.05, 0.9, 0.95); bun.position.set(0, 0.2, 0.15); swing.add(bun);
+    for (let i = 0; i < 3; i++) { const w = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.009, 6, 24), hairMat); w.position.set(0, 0.2 + (i - 1) * 0.018, 0.15); w.rotation.set(Math.PI / 2 + (i - 1) * 0.35, 0, i * 0.5); w.scale.set(1.05, 1.05, 0.9); swing.add(w); }
+    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.083, 0.011, 8, 26), mats.bord); tie.position.set(0, 0.145, 0.15); tie.rotation.x = Math.PI / 2 - 0.55; swing.add(tie);
+    const nape = mk(new THREE.SphereGeometry(0.19, 22, 14, 0, Math.PI, 0, Math.PI * 0.5), 0.1, -0.2); nape.scale.set(0.95, 0.8, 0.9); nape.position.set(0, 0.03, 0.06); nape.rotation.x = -0.4; swing.add(nape);   // tirata dietro
+    for (const s of [-1, 1]) {
+      const strand = mk(new THREE.CapsuleGeometry(0.011, 0.17, 4, 8), 0.1, -0.14); strand.scale.set(0.8, 1, 0.7);
+      strand.position.set(s * 0.178, -0.07, -0.05); strand.rotation.set(0.05, 0, s * 0.05); head.add(strand);
+    }
+    parts.hairUp = true;
+  } else {
+    const curtain = mk(new THREE.CylinderGeometry(0.205, 0.2, 0.62, 28, 10, true, -Math.PI * 0.64, Math.PI * 1.28), 0.31, -0.31); curtain.position.set(0, -0.32, 0.0); swing.add(curtain);
+    for (const s of [-1, 1]) {
+      const lock = mk(new THREE.CapsuleGeometry(0.045, 0.52, 4, 10), 0.28, -0.3); lock.scale.set(0.8, 1, 0.42);
+      lock.position.set(s * 0.175, -0.2, -0.085); lock.rotation.set(0.03, 0, s * 0.1); head.add(lock);
+    }
   }
   // volto
-  const eyes = [];
-  for (const s of [-1, 1]) {
-    head.add(sph(0.034, mats.white, s * 0.07, 0.02, -0.168, 1.05, 1.0, 0.45));
-    const iris = sph(0.024, mats.eye, s * 0.07, 0.019, -0.182, 1, 1.05, 0.4); head.add(iris); eyes.push(iris);
-    head.add(sph(0.012, lam(0x120a05), s * 0.07, 0.019, -0.19, 1, 1.05, 0.4));
-    head.add(sph(0.006, mats.white, s * 0.062, 0.03, -0.195));
-    const lid = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.0055, 6, 14, Math.PI * 0.85), mats.hairSh); lid.position.set(s * 0.07, 0.022, -0.176); lid.rotation.z = Math.PI * 0.075; lid.scale.set(1.05, 0.7, 0.6); head.add(lid);  // ciglia
-    head.add(sph(0.03, lam(0xf09a8f), s * 0.095, -0.05, -0.15, 1.2, 0.7, 0.4));      // guance
-  }
-  const brows = [];
-  for (const s of [-1, 1]) { const b = new THREE.Group(); b.position.set(s * 0.072, 0.075, -0.172); b.add(mesh(new THREE.CapsuleGeometry(0.0085, 0.055, 4, 8), mats.hairSh, 0, 0, 0)); b.children[0].rotation.z = Math.PI / 2; head.add(b); brows.push(b); }
-  head.add(sph(0.016, lam(0xe6ba96), 0, -0.027, -0.193, 1, 1.4, 0.9));              // naso
-  head.add(sph(0.011, lam(0xe0b08e), -0.012, -0.045, -0.188, 1, 0.8, 0.8)); head.add(sph(0.011, lam(0xe0b08e), 0.012, -0.045, -0.188, 1, 0.8, 0.8));
-  const smile = new THREE.Group(); smile.position.set(0, -0.082, -0.178); head.add(smile);
-  smile.add(sph(0.026, mats.lip, 0, -0.008, 0, 1.5, 0.42, 0.55)); smile.add(sph(0.022, lam(0xb86568), 0, 0.007, 0, 1.4, 0.38, 0.5));
-  const sline = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.004, 6, 14, Math.PI), lam(0x9a4a4c)); sline.rotation.z = Math.PI; sline.position.y = 0.012; smile.add(sline);
-  const mouthOpen = new THREE.Group(); mouthOpen.position.set(0, -0.09, -0.172); mouthOpen.visible = false; head.add(mouthOpen);
-  mouthOpen.add(sph(0.04, lam(0x4a0d12), 0, 0, 0, 1, 0.9, 0.4)); mouthOpen.add(box(0.06, 0.012, 0.01, mats.white, 0, 0.022, -0.012)); mouthOpen.add(sph(0.016, lam(0xb3263e), 0, -0.02, -0.005, 1.5, 0.6, 0.5));
   // cresta e becco (solo gallina)
   const hen = new THREE.Group(); hen.visible = false; head.add(hen); parts.henHead = hen;
   for (let i = 0; i < 5; i++) hen.add(sph(0.045 - Math.abs(i - 2) * 0.006, mats.red, 0, 0.21 + (i === 2 ? 0.025 : 0) - Math.abs(i - 2) * 0.012, -0.1 + i * 0.05));
   const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.15, 12), mats.orange); beak.rotation.x = -Math.PI / 2; beak.position.set(0, -0.045, -0.255); hen.add(beak);
   hen.add(sph(0.032, mats.red, 0, -0.115, -0.2, 0.8, 1.5, 0.7));
-  parts.face = { brows, smile, mouthOpen, hen, eyes };
+  parts.face = { hen, mat: faceMat }; parts.expr = 'smile'; parts.skinKey = 'martina'; parts.clock = Math.random() * 3; parts.init = false;
 
   // ---- gallina ----
   const henBody = new THREE.Group(); henBody.visible = false; root.add(henBody); parts.henBody = henBody;
@@ -218,7 +236,7 @@ export function setForm(M, form) {
     a.sh.visible = !hen;
   }
   for (const l of [M.legL, M.legR]) { l.hip.visible = !hen; l.thigh.scale.set(sumo ? 1.5 : big ? 1.3 : 1, 1, sumo ? 1.5 : big ? 1.3 : 1); l.shin.scale.copy(l.thigh.scale); }
-  M.henBody.visible = hen; M.face.hen.visible = hen;
+  M.henBody.visible = hen; M.face.hen.visible = hen; M.skinKey = big ? 'hulk' : 'martina'; M.init = false;
   M.torso.position.y = hen ? 0.3 : 0.92;
   M.head.scale.setScalar(big ? 0.85 : 1);
   M.root.scale.set(sc * (big ? 1.5 : sumo ? 1.45 : hen ? 1.25 : 1), sc * (big ? 1.38 : sumo ? 0.98 : hen ? 1.25 : 1), sc * (big ? 1.42 : sumo ? 1.45 : hen ? 1.25 : 1));
@@ -226,70 +244,72 @@ export function setForm(M, form) {
   M.shadow.scale.setScalar(big || sumo ? 1.6 : hen ? 1.4 : 1);
 }
 
-export function face(M, expr) {
-  const f = M.face;
-  const angry = expr === 'angry' || expr === 'hen';
-  f.smile.visible = expr === 'smile' || expr === 'worried';
-  f.mouthOpen.visible = expr === 'angry' || expr === 'shout' || expr === 'scared';
-  f.brows[0].rotation.z = angry ? -0.5 : expr === 'scared' ? 0.35 : 0.1; f.brows[1].rotation.z = angry ? 0.5 : expr === 'scared' ? -0.35 : -0.1;
-  f.brows.forEach((b) => { b.position.y = angry ? 0.062 : 0.075; });
-  f.mouthOpen.scale.set(expr === 'scared' ? 0.8 : 1, expr === 'shout' || expr === 'scared' ? 1.3 : 1, 1);
+export function face(M, expr) { M.expr = expr; applyFace(M, false); }
+function applyFace(M, blink) {
+  const key = M.expr + (blink ? 'b' : '') + M.skinKey;
+  if (M.faceKey === key) return;
+  M.faceKey = key; M.face.mat.map = faceTexture(M.expr === 'hen' ? 'hen' : M.expr, blink, M.skinKey); M.face.mat.needsUpdate = true;
 }
 
-// ---- pose / animazione ----
-const set = (o, x, y = 0, z = 0) => { o.rotation.set(x, y, z); };
+// ---- pose / animazione (fluida: ogni giunto insegue la posa richiesta con smorzamento) ----
 export function pose(M, name, t, k = {}) {
-  const f = M.form;
-  const run = name === 'run', s = Math.sin(t * 11), s2 = Math.sin(t * 11 + Math.PI);
-  M.body.position.set(0, 0, 0); M.body.rotation.set(0, 0, 0);
-  M.root.rotation.set(0, M.yaw || 0, 0);
+  const f = M.form, sn = !M.init; M.init = true;
+  const dtc = getDT(); M.clock += dtc;
+  const run = name === 'run', ph = t * 11, s = Math.sin(ph), c = Math.cos(ph);
   const { legL, legR, armL, armR, torso } = M;
   const sumo = f === 'sumo', hen = f === 'hen';
+  const R = (o, x, y = 0, z = 0, rate = 18) => rot(o, x, y, z, rate, sn);
+  let by = 0, bx = 0, bz = 0, bry = 0, brx = 0, brz = 0, hx = 0, hy = 0, hz = 0, hair = 0;
+  M.root.rotation.set(0, M.yaw || 0, 0);
   if (run) {
-    set(legL.hip, s * 0.95); set(legR.hip, s2 * 0.95);
-    set(legL.knee, -(Math.max(0, -s) * 1.25 + 0.1)); set(legR.knee, -(Math.max(0, -s2) * 1.25 + 0.1));
-    set(armL.sh, s2 * 0.85, 0, 0.08); set(armR.sh, s * 0.85, 0, -0.08);
-    set(armL.el, 0.8 + Math.max(0, s2) * 0.4); set(armR.el, 0.8 + Math.max(0, s) * 0.4);
-    set(torso, -0.14, s * 0.12);
-    M.body.position.y = Math.abs(Math.sin(t * 11)) * 0.07;
-    M.head.rotation.set(0.1, -s * 0.06, 0);
+    const fl = (v) => 0.2 + 1.15 * Math.pow(Math.max(0, v), 1.1);          // il ginocchio si piega quando la gamba torna avanti
+    R(legL.hip, s * 0.85 + 0.06, 0, 0.03, 26); R(legR.hip, -s * 0.85 + 0.06, 0, -0.03, 26);
+    R(legL.knee, -fl(c), 0, 0, 26); R(legR.knee, -fl(-c), 0, 0, 26);
+    R(legL.foot, 0.12 - 0.25 * Math.max(0, -s), 0, 0, 20); R(legR.foot, 0.12 - 0.25 * Math.max(0, s), 0, 0, 20);
+    R(armL.sh, -s * 0.75 + 0.1, 0, 0.1, 22); R(armR.sh, s * 0.75 + 0.1, 0, -0.1, 22);
+    R(armL.el, 1.15 + Math.max(0, s) * 0.3, 0, 0, 22); R(armR.el, 1.15 + Math.max(0, -s) * 0.3, 0, 0, 22);
+    R(torso, -0.13, s * 0.15, c * 0.03, 16);
+    by = Math.abs(Math.sin(ph)) * 0.06; brz = c * 0.025; hx = 0.12; hy = -s * 0.1; hair = 0.14 + Math.sin(ph + 1.3) * 0.12;
   } else if (name === 'jump') {
-    set(legL.hip, 0.7); set(legR.hip, -0.25); set(legL.knee, -1.0); set(legR.knee, -1.2);
-    set(armL.sh, 2.5, 0, 0.35); set(armR.sh, 2.5, 0, -0.35); set(armL.el, 0.3); set(armR.el, 0.3);
-    set(torso, -0.12); M.head.rotation.set(-0.1, 0, 0);
+    R(legL.hip, 0.75, 0, 0.04, 14); R(legR.hip, -0.3, 0, -0.04, 14); R(legL.knee, -1.05, 0, 0, 14); R(legR.knee, -1.25, 0, 0, 14);
+    R(legL.foot, 0.3, 0, 0, 14); R(legR.foot, 0.4, 0, 0, 14);
+    R(armL.sh, 2.5, 0, 0.35, 14); R(armR.sh, 2.5, 0, -0.35, 14); R(armL.el, 0.3, 0, 0, 14); R(armR.el, 0.3, 0, 0, 14);
+    R(torso, -0.12, 0, 0, 12); hx = -0.1; hair = 0.45;
   } else if (name === 'slide') {
-    M.body.rotation.x = 1.15; M.body.position.set(0, 0.5, 0.25);
-    set(legL.hip, 0.15); set(legR.hip, 0.15); set(legL.knee, -0.1); set(legR.knee, -0.1);
-    set(armL.sh, 1.4, 0, 0.3); set(armR.sh, 1.4, 0, -0.3); set(armL.el, 0.2); set(armR.el, 0.2);
-    set(torso, 0); M.head.rotation.set(-1.0, 0, 0);
+    brx = 1.15; by = 0.5; bz = 0.25;
+    R(legL.hip, 0.15, 0, 0.05, 14); R(legR.hip, 0.15, 0, -0.05, 14); R(legL.knee, -0.1, 0, 0, 14); R(legR.knee, -0.1, 0, 0, 14); R(legL.foot, 0, 0, 0, 14); R(legR.foot, 0, 0, 0, 14);
+    R(armL.sh, 1.4, 0, 0.3, 14); R(armR.sh, 1.4, 0, -0.3, 14); R(armL.el, 0.2, 0, 0, 14); R(armR.el, 0.2, 0, 0, 14);
+    R(torso, 0, 0, 0, 12); hx = -1.0; hair = 0.5;
   } else if (name === 'cheer') {
     const w = Math.sin(t * 9) * 0.25;
-    set(legL.hip, 0); set(legR.hip, 0); set(legL.knee, 0); set(legR.knee, 0);
-    set(armL.sh, 2.9 + w, 0, 0.45); set(armR.sh, 2.9 - w, 0, -0.45); set(armL.el, 0.2); set(armR.el, 0.2);
-    set(torso, 0); M.body.position.y = Math.abs(Math.sin(t * 7)) * 0.08; M.head.rotation.set(0, 0, 0);
+    R(legL.hip, 0, 0, 0.05, 14); R(legR.hip, 0, 0, -0.05, 14); R(legL.knee, 0); R(legR.knee, 0); R(legL.foot, 0); R(legR.foot, 0);
+    R(armL.sh, 2.9 + w, 0, 0.45, 14); R(armR.sh, 2.9 - w, 0, -0.45, 14); R(armL.el, 0.2); R(armR.el, 0.2);
+    R(torso, 0, Math.sin(t * 4) * 0.08, 0, 12); by = Math.abs(Math.sin(t * 7)) * 0.08; hair = Math.sin(t * 7) * 0.08;
   } else if (name === 'roar') {
     const q = Math.sin(t * 22) * 0.04;
-    set(legL.hip, 0, 0, -0.18); set(legR.hip, 0, 0, 0.18); set(legL.knee, 0); set(legR.knee, 0);
-    set(armL.sh, 0.2, 0, 0.9 + q); set(armR.sh, 0.2, 0, -0.9 - q); set(armL.el, 1.0); set(armR.el, 1.0);
-    set(torso, 0.18 + q); M.head.rotation.set(-0.35, 0, 0);
+    R(legL.hip, 0, 0, -0.18, 14); R(legR.hip, 0, 0, 0.18, 14); R(legL.knee, 0); R(legR.knee, 0); R(legL.foot, 0); R(legR.foot, 0);
+    R(armL.sh, 0.2, 0, 0.9 + q, 14); R(armR.sh, 0.2, 0, -0.9 - q, 14); R(armL.el, 1.0); R(armR.el, 1.0);
+    R(torso, 0.18 + q, 0, 0, 14); hx = -0.35;
   } else if (name === 'scared') {
-    set(legL.hip, 0.05); set(legR.hip, -0.05); set(legL.knee, -0.1); set(legR.knee, -0.1);
     const sh = Math.sin(t * 40) * 0.05;
-    set(armL.sh, 1.2 + sh, 0, 0.5); set(armR.sh, 1.2 - sh, 0, -0.5); set(armL.el, 1.4); set(armR.el, 1.4);
-    set(torso, 0.1); M.head.rotation.set(0, 0, 0);
-  } else {                                                  // stand
-    const br = Math.sin(t * 2.2) * 0.02;
-    set(legL.hip, 0); set(legR.hip, 0); set(legL.knee, 0); set(legR.knee, 0);
-    set(armL.sh, br, 0, 0.1); set(armR.sh, -br, 0, -0.1); set(armL.el, 0.12); set(armR.el, 0.12);
-    set(torso, 0); M.head.rotation.set(0, 0, 0);
-    M.body.position.y = br;
+    R(legL.hip, 0.05, 0, 0.06, 14); R(legR.hip, -0.05, 0, -0.06, 14); R(legL.knee, -0.12); R(legR.knee, -0.12); R(legL.foot, 0); R(legR.foot, 0);
+    R(armL.sh, 1.2 + sh, 0, 0.5, 16); R(armR.sh, 1.2 - sh, 0, -0.5, 16); R(armL.el, 1.4, 0, 0, 16); R(armR.el, 1.4, 0, 0, 16);
+    R(torso, 0.1 + sh, 0, 0, 16); hy = sh * 2; by = -0.02;
+  } else {                                                  // stand: respiro e leggero spostamento del peso
+    const br = Math.sin(t * 2.2) * 0.02, sw = Math.sin(t * 0.9) * 0.03;
+    R(legL.hip, 0, 0, 0.04 + sw, 8); R(legR.hip, 0, 0, -0.04 + sw, 8); R(legL.knee, 0, 0, 0, 8); R(legR.knee, 0, 0, 0, 8); R(legL.foot, 0, 0, 0, 8); R(legR.foot, 0, 0, 0, 8);
+    R(armL.sh, br, 0, 0.1, 8); R(armR.sh, -br, 0, -0.1, 8); R(armL.el, 0.15 + br, 0, 0, 8); R(armR.el, 0.15 - br, 0, 0, 8);
+    R(torso, 0, sw * 0.6, sw * 0.5, 8); by = br; hy = Math.sin(t * 0.7) * 0.05; hair = Math.sin(t * 2) * 0.03;
   }
   if (sumo && name !== 'slide' && name !== 'jump') {          // posa del sumo: gambe larghe e piegate, braccia larghe
-    set(legL.hip, -0.1, 0, -0.45); set(legR.hip, -0.1, 0, 0.45); set(legL.knee, -0.35); set(legR.knee, -0.35);
-    set(armL.sh, 0.2, 0, 0.7); set(armR.sh, 0.2, 0, -0.7);
-    M.body.position.y = -0.08 + Math.abs(Math.sin(t * 5)) * 0.03;
+    R(legL.hip, -0.1, 0, -0.45); R(legR.hip, -0.1, 0, 0.45); R(legL.knee, -0.35); R(legR.knee, -0.35);
+    R(armL.sh, 0.2, 0, 0.7); R(armR.sh, 0.2, 0, -0.7);
+    by = -0.08 + Math.abs(Math.sin(t * 5)) * 0.03;
   }
+  rot(M.body, brx, bry, brz, 14, sn); pos(M.body, bx, by, bz, 22, sn);
+  rot(M.head, hx, hy, hz, 14, sn);
+  if (M.hairSwing) rot(M.hairSwing, hair, 0, 0, M.hairUp ? 9 : 7, sn);
   if (hen) { M.henBody.rotation.set(0, 0, Math.sin(t * 14) * 0.05); M.body.position.y = Math.abs(Math.sin(t * 12)) * 0.05; if (M.henWing) M.henWing.forEach((w, i) => { w.rotation.z = (i ? 1 : -1) * (0.35 + Math.abs(Math.sin(t * 16)) * 0.6); }); }
-  if (M.hairSwing) M.hairSwing.rotation.x = run ? 0.1 + Math.sin(t * 11 + 1) * 0.1 : name === 'slide' ? 0.5 : name === 'jump' ? 0.35 : Math.sin(t * 2) * 0.03;
   if (k.lean) { M.root.rotation.z = -k.lean * 0.22; M.root.rotation.y = (M.yaw || 0) - k.lean * 0.38; }
+  applyFace(M, (M.clock % 3.6) > 3.47 && M.expr !== 'angry' && M.expr !== 'shout');
 }

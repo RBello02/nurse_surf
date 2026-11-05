@@ -5,6 +5,7 @@ import { buildNurse, nursePose, buildProf, profPose } from './nurse.js';
 import { makeProp, makeMedal, makeHint } from './props3d.js';
 import { buildWorld, U, HALF_W, LANES } from './world.js';
 import { createParticles } from './fx3d.js';
+import { setDT } from './anim.js';
 
 // ---------------------------------------------------------------- base: renderer, camera, luci
 const stage = document.getElementById('stage');
@@ -194,7 +195,7 @@ SCENES.game = (opt) => {
     objs: [], nextRowW: 2.4, uniGate: false, doorIdx: 0, hits: 0, cfu: 0, healCount: 0, invul: 0, sinceHit: 0,
     gap: CFG.CHASER_START_GAP, gapT: CFG.CHASER_START_GAP, nurseX: 0,
     phase: 'run', phaseT: 0, bubble: '', bubbleT: 0, score: 0, finale: false, paused: false, ended: false,
-    pre: {}, warm: [], tasks: [], gateW: null, uniW: null, finaleDoor: null, door: null, c: null, t: 0, bannerT: 0, tutT: 7
+    gt: 0, pre: {}, warm: [], tasks: [], gateW: null, uniW: null, finaleDoor: null, door: null, c: null, t: 0, bannerT: 0, tutT: 7
   };
   S.g = g;
 
@@ -309,7 +310,7 @@ SCENES.game = (opt) => {
     const dz = (d.w - g.T) * U;                              // distanza dalla parete (m)
     if (d.state === 'run') {
       const rem = dz - d.stop;
-      g.speed = Math.min(g.speed, Math.max(0, rem * 0.09));
+      g.speed = Math.min(g.speed, Math.max(1.6, Math.sqrt(2 * 11 * Math.max(0, rem))) / U);
       if (rem < 0.12 || g.speed < 0.02 && rem < 1) { g.speed = 0; d.state = 'ask'; d.t = 0; Sfx.warn(); showQuestion(); }
     } else if (d.state === 'ask') { g.speed = 0; }
     else if (d.state === 'open') {
@@ -365,20 +366,18 @@ SCENES.game = (opt) => {
     } else {
       pose(M, 'roar', t); face(M, c.morph === 'hen' ? 'hen' : 'angry');
     }
-    // infermiera
+    // infermiera: corre fino a Martina, carica il braccio, affonda la siringa e, a trasformazione fatta, indietreggia spaventata
     const nx = N.root.position;
-    nx.x = lerp(nx.x, g.x, Math.min(1, dt * 8));
+    nx.x = lerp(nx.x, g.x - 0.2, Math.min(1, dt * 7));                 // la mano destra (con la siringa) punta a Martina
+    const lk = clamp((t - (CATCH.stab - 0.2)) / 0.2, 0, 1);
     let nz;
-    const arrive = easeOut(clamp(t / CATCH.arrive, 0, 1));
-    nz = lerp(c.sz, 1.75, arrive);
-    if (t > CATCH.arrive + 0.3 && t < CATCH.back) nz = lerp(1.75, 2.1, ease((t - CATCH.arrive - 0.3) / (CATCH.back - CATCH.arrive - 0.3)));
-    else if (t >= CATCH.back) nz = lerp(2.1, 1.22, ease((t - CATCH.stab + 0.12) / 0.12));
-    if (c.morphed) nz = lerp(1.22, 2.7, ease((t - c.mt) / 0.7));
+    if (t < CATCH.arrive) nz = lerp(c.sz, 2.3, easeOut(t / CATCH.arrive));
+    else if (!c.morphed) nz = lerp(2.3, 1.42, ease(lk)) + (t < CATCH.stab - 0.2 ? Math.sin((t - CATCH.arrive) * 3) * 0.03 : 0);
+    else nz = lerp(1.42, 2.9, ease((t - c.mt) / 0.9));
     nx.z = nz; N.root.rotation.y = 0;
-    nursePose(N, t < CATCH.arrive ? 'run' : 'stand', t);
-    const sy = N.syringe, ar = ease((t - CATCH.arrive) / 0.4);
-    sy.rotation.y = lerp(0, -Math.PI / 2, ar); sy.position.set(0, lerp(0.95, 0.42, ar), lerp(0, -0.05, ar));
-    if (t > CATCH.arrive + 0.3 && t < CATCH.back) sy.position.z = lerp(-0.05, 0.25, ease((t - CATCH.arrive - 0.3) / 0.5));
+    if (t < CATCH.arrive) nursePose(N, 'run', t, { rate: 9 + (1 - easeOut(t / CATCH.arrive)) * 5 });
+    else if (c.morphed) nursePose(N, 'scared', t);
+    else nursePose(N, 'attack', t, { k: lk });
     // eventi
     const once = (k, at, fn) => { if (t >= at && !c.ev[k]) { c.ev[k] = 1; fn(); } };
     once('warn', 0.35, () => Sfx.warn());
@@ -525,7 +524,7 @@ SCENES.game = (opt) => {
     if (g.phase !== 'catch') {
       g.gap += (g.gapT - g.gap) * Math.min(1, dt * 2.2);
       N.root.position.set(lerp(N.root.position.x, g.x, Math.min(1, dt * 5)), 0, 2.6 + g.gap * 7);
-      N.root.rotation.y = 0; nursePose(N, g.speed > 0.05 ? 'run' : 'stand', g.t);
+      N.root.rotation.y = 0; nursePose(N, g.speed > 0.05 ? 'run' : 'stand', g.t, { rate: 6 + g.speed * 5 });
       N.root.visible = g.phase !== 'corridor' || true;
     }
     if (g.uniW != null && g.T >= g.uniW + 0.5 && !g.bannerDone) { g.bannerDone = true; Sfx.start(); bannerEl = $(`<div class="banner glass">${esc(CFG.ZONES.uni.banner.split(' ')[0])}<span>${esc(CFG.ZONES.uni.banner.split(' ').slice(1).join(' '))}</span></div>`); hud.appendChild(bannerEl); g.bannerT = 3; }
@@ -551,7 +550,7 @@ SCENES.game = (opt) => {
       if (g.phase === 'door' && g.door && (g.door.state === 'ask' || g.door.state === 'bump')) nm = g.door.state === 'bump' ? 'scared' : 'stand';
       if (g.phase === 'door' && g.door && g.door.state === 'open' && !g.door.ok) nm = 'stand';
       M.yaw = 0;
-      pose(M, nm, g.t * (0.5 + g.speed * 0.6), { lean: nm === 'run' ? lean : 0 });
+      g.gt += dt * (0.5 + g.speed * 0.6); pose(M, nm, g.gt, { lean: nm === 'run' ? lean : 0 });
       const jh = g.jumpT > 0 ? 4 * 1.7 * (1 - g.jumpT / CFG.JUMP_TIME) * (g.jumpT / CFG.JUMP_TIME) : 0;
       M.root.position.y = jh;
       if (g.invul > 0 && Math.floor(g.invul * 14) % 2) M.root.visible = false; else M.root.visible = true;
@@ -640,7 +639,7 @@ SCENES.finale = (opt) => {
     if (!revealed) {
       pose(M, 'stand', t); face(M, 'smile');
       profs.forEach((P, i) => profPose(P, 'idle', t, i));
-      nursePose(N, 'stand', t); N.arms.forEach((a, i) => { a.sh.rotation.z = (i ? 1 : -1) * -0.3; });
+      nursePose(N, 'stand', t);
       const ci = Math.min(caps.length - 1, Math.floor(t / T_CAP));
       if (ci !== stage2 && t < T_DRUM) { stage2 = ci; showCap(caps[ci]); Sfx.select(); }
       if (t >= T_DRUM && !S.drum) { S.drum = true; Sfx.drumroll(); showCap(['...'], 'dots'); }
@@ -649,7 +648,7 @@ SCENES.finale = (opt) => {
       const r = t - T_REVEAL;
       pose(M, 'cheer', t); face(M, 'shout'); if (r > 1.2) face(M, 'smile');
       profs.forEach((P, i) => profPose(P, 'clap', t, i));
-      nursePose(N, 'stand', t); N.arms.forEach((a, i) => { a.sh.rotation.z = (i ? 1 : -1) * (-0.9 + Math.sin(t * 9 + i) * 0.4); });
+      nursePose(N, 'clap', t);
       for (const h of hats) { const u = h.userData; u.v.y -= 9 * dt; h.position.addScaledVector(u.v, dt); h.rotation.x += u.w.x * dt; h.rotation.y += u.w.y * dt; h.rotation.z += u.w.z * dt; if (h.position.y < 0.6 && u.v.y < 0) { u.v.set(0, 0, 0); u.w.set(0, 0, 0); h.position.y = 0.6; } }
       if (fwT <= 0) { fwT = rnd(0.3, 0.7); const col = pick([[0xffe27a, 0xffffff], [0xff6b8a, 0xffd1dc], [0x7fd3ff, 0xffffff], [0x9bff9b, 0xffffff]]); fx.burst(rnd(-6, 6), rnd(6, 8.6), -9, col, 50, 5.5, 1.6, 2.5); Sfx.sparkle(); }
       for (let i = 0; i < 3; i++) fx.emit(rnd(-9, 9), 9.5, rnd(-10, 1), rnd(-0.4, 0.4), rnd(-1, 0), rnd(-0.4, 0.4), pick([0xe0344b, 0xf6c344, 0x3bb273, 0x3e7bd6, 0xffffff, 0xf08fb0]), 7, 1.6, 0.3);
@@ -687,6 +686,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   let dt = (now - last) / 1000; last = now;
   if (dt > 0.1) dt = 0.1; if (dt <= 0) return;
+  setDT(dt);
   if (app.scene) app.scene.update(dt);
   fx.update(dt);
   // scossone e lampo
