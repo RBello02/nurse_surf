@@ -108,15 +108,22 @@ export function buildNurse() {
   for (const s of [-1, 1]) head.add(sph(0.03, m.skin, s * 0.176, -0.015, 0, 0.5, 1.1, 0.8));
   // capelli castani raccolti: calotta con attaccatura e riga laterale, chignon basso con retina, ciocche ai lati, cuffietta inclinata con croce
   const hairM = std(0x6b4630, 0.55, 0);
-  const hcap = new THREE.Mesh(hairCapGeo(Math.PI * 0.66), hairM); hcap.scale.set(1.02, 1.13, 1.04); hcap.position.set(0, -0.065, 0.02); head.add(hcap);
-  const bun = sph(0.105, hairM, 0, 0.0, 0.2, 1.05, 0.95, 0.9); head.add(bun);
+  const hcap = new THREE.Mesh(hairCapGeo(Math.PI * 0.56), hairM); hcap.scale.set(1.02, 1.13, 1.04); hcap.position.set(0, -0.065, 0.02); head.add(hcap);
+  const bun = sph(0.105, hairM, 0, 0.02, 0.2, 1.05, 0.95, 0.9); head.add(bun);
+  const nape = mesh(new THREE.SphereGeometry(0.19, 22, 14, 0, Math.PI, 0, Math.PI * 0.5), hairM, 0, 0.0, 0.06); nape.scale.set(0.98, 0.85, 0.9); nape.rotation.x = -0.5; head.add(nape);
   const net = new THREE.Mesh(new THREE.SphereGeometry(0.112, 16, 10), new THREE.MeshBasicMaterial({ color: 0x2a1810, wireframe: true, transparent: true, opacity: 0.35 })); net.position.copy(bun.position); net.scale.copy(bun.scale); head.add(net);
-  for (const s of [-1, 1]) { const st = mesh(new THREE.CapsuleGeometry(0.012, 0.17, 4, 8), hairM, s * 0.178, -0.07, -0.05); st.scale.set(0.8, 1, 0.7); head.add(st); }
+  for (const s of [-1, 1]) { const st = mesh(new THREE.CapsuleGeometry(0.01, 0.15, 4, 8), hairM, s * 0.172, -0.04, -0.06); st.scale.set(0.8, 1, 0.6); head.add(st); }
   const capG = new THREE.Group(); capG.position.set(0, 0.2, 0.05); capG.rotation.x = -0.22; head.add(capG);
   capG.add(cyl(0.15, 0.175, 0.075, m.white, 0, 0, 0, 28));
   capG.add(box(0.03, 0.06, 0.01, m.red, 0, 0.0, -0.172)); capG.add(box(0.06, 0.03, 0.01, m.red, 0, 0.0, -0.172));
   P.shadow = blobShadow(1.3, 0.35); root.add(P.shadow);
-  root.scale.setScalar(0.85);
+  // corporatura robusta (come l'infermiera cattiva del 2D): busto, gonna, braccia e gambe piu' larghi, testa grande
+  skirt.scale.set(1.3, 1, 1.3); hem.scale.set(1.3, 1.3, 1);
+  torso.children[0].scale.set(1.35, 1, 1.3); belt.scale.set(1.62, 1, 0.95);
+  for (const a of P.arms) { a.sh.position.x *= 1.32; a.sh.scale.set(1.3, 1, 1.3); }
+  for (const l of P.legs) { l.position.x *= 1.35; l.scale.set(1.3, 1, 1.3); }
+  head.scale.setScalar(1.35); head.position.y = 0.62;
+  root.scale.setScalar(1.0);
   return P;
 }
 

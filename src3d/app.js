@@ -368,7 +368,7 @@ SCENES.game = (opt) => {
     }
     // infermiera: corre fino a Martina, carica il braccio, affonda la siringa e, a trasformazione fatta, indietreggia spaventata
     const nx = N.root.position;
-    nx.x = lerp(nx.x, g.x - 0.2, Math.min(1, dt * 7));                 // la mano destra (con la siringa) punta a Martina
+    nx.x = lerp(nx.x, g.x - 0.34, Math.min(1, dt * 7));                 // la mano destra (con la siringa) punta a Martina
     const lk = clamp((t - (CATCH.stab - 0.2)) / 0.2, 0, 1);
     let nz;
     if (t < CATCH.arrive) nz = lerp(c.sz, 2.3, easeOut(t / CATCH.arrive));
