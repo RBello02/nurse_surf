@@ -4,10 +4,11 @@ import { THREE, lam, std, mesh, box, rbox, cyl, sph, clamp, lerp, blobShadow } f
 import { faceTexture, applyFaceUV } from './face.js';
 import { rot, pos, damp, getDT } from './anim.js';
 
+const HEAD = 1.3;
 const HAIR = 0x5a3a26, HAIR_SH = 0x3e281a, SKIN = 0xf2c9a5, GREEN = 0x62c24c;
 const OUT = {
-  casual:   { top: 0x1c1c23, topHi: 0x34343f, pants: 0x1c1c23, shoe: 0x7a1f35, sleeves: 'long',  wide: true,  belt: 0x7a1f35 },
-  elegante: { top: 0x8f978c, topHi: 0xaab1a5, pants: 0x8f978c, shoe: 0x6b2230, sleeves: 'mid',   wide: true,  strap: 0xb33a3a },
+  casual:   { top: 0x1c1c23, topHi: 0x34343f, pants: 0x1c1c23, shoe: 0x7a1f35, sleeves: 'long',  wide: false,  belt: 0x7a1f35 },
+  elegante: { top: 0x8f978c, topHi: 0xaab1a5, pants: 0x8f978c, shoe: 0x6b2230, sleeves: 'mid',   wide: false,  strap: 0xb33a3a },
   uniforme: { top: 0x2fb5a3, topHi: 0x58d3c1, pants: 0x2a9f8f, shoe: 0xffffff, sleeves: 'short', wide: false }
 };
 
@@ -25,7 +26,8 @@ function hairGrad(geo, yTop, yBot) {
 }
 export const capsule = (r, len, mat, x = 0, y = 0, z = 0) => mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat, x, y, z);
 // arto affusolato (profilo tornito): pts = [[raggio, y], ...] dall'attaccatura verso il basso; fold = pieghe del tessuto
-export function limb(pts, mat, fold = 0, x = 0, y = 0, z = 0) {
+export function limb(pts0, mat, fold = 0, x = 0, y = 0, z = 0) {
+  const pts = pts0.map(([r, yy]) => [r * 1.18, yy]);       // arti piu' robusti, stile cartone
   const v = [new THREE.Vector2(0.001, pts[pts.length - 1][1] - 0.004)];
   for (let i = pts.length - 1; i >= 0; i--) v.push(new THREE.Vector2(pts[i][0], pts[i][1]));
   v.push(new THREE.Vector2(0.001, pts[0][1] + 0.004));
@@ -151,7 +153,7 @@ export function buildMartina(outfit = 'uniforme') {
   parts.armL = arm(-1); parts.armR = arm(1);
 
   // ---- testa ----
-  const head = new THREE.Group(); head.position.y = 0.75; torso.add(head); parts.head = head;
+  const head = new THREE.Group(); head.position.y = 0.8; head.scale.setScalar(HEAD); torso.add(head); parts.head = head;
   const faceMat = new THREE.MeshLambertMaterial({ map: faceTexture('smile', false, 'martina') }); mats.face = faceMat;
   head.add(mesh(headGeo(), faceMat));
   for (const s of [-1, 1]) {                                                              // orecchie e orecchini d'argento
@@ -215,7 +217,7 @@ export function buildMartina(outfit = 'uniforme') {
 
   parts.outfit = outfit; parts.O = O; parts.form = 'normal';
   parts.base = { skin: SKIN, shoe: O.shoe, pants: O.pants };
-  parts.hs = 0.9; root.scale.setScalar(parts.hs);
+  parts.hs = 0.95; root.scale.setScalar(parts.hs);
   return parts;
 }
 
@@ -238,7 +240,7 @@ export function setForm(M, form) {
   for (const l of [M.legL, M.legR]) { l.hip.visible = !hen; l.thigh.scale.set(sumo ? 1.5 : big ? 1.3 : 1, 1, sumo ? 1.5 : big ? 1.3 : 1); l.shin.scale.copy(l.thigh.scale); }
   M.henBody.visible = hen; M.face.hen.visible = hen; M.skinKey = big ? 'hulk' : 'martina'; M.init = false;
   M.torso.position.y = hen ? 0.3 : 0.92;
-  M.head.scale.setScalar(big ? 0.85 : 1);
+  M.head.scale.setScalar(HEAD * (big ? 0.85 : 1));
   M.root.scale.set(sc * (big ? 1.5 : sumo ? 1.45 : hen ? 1.25 : 1), sc * (big ? 1.38 : sumo ? 0.98 : hen ? 1.25 : 1), sc * (big ? 1.42 : sumo ? 1.45 : hen ? 1.25 : 1));
   face(M, big || sumo ? 'angry' : hen ? 'hen' : 'smile');
   M.shadow.scale.setScalar(big || sumo ? 1.6 : hen ? 1.4 : 1);

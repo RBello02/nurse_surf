@@ -130,7 +130,7 @@ SCENES.menu = () => {
   };
   S.update = (dt) => {
     t += dt; pose(M, 'stand', t); M.root.rotation.y = Math.sin(t * 0.8) * 0.35;
-    setCam(new THREE.Vector3(Math.sin(t * 0.35) * 0.7, 1.35, -2.7), new THREE.Vector3(0, 1.0, 0), 0, dt);
+    setCam(new THREE.Vector3(Math.sin(t * 0.35) * 0.7, 1.3, -3.5), new THREE.Vector3(0, 1.22, 0), 0, dt);
   };
   return S;
 };

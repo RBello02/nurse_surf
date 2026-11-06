@@ -103,7 +103,7 @@ export function buildNurse() {
   P.handR = P.arms[1].hand;
   const syr = buildSyringe(m); syr.position.set(0, 0.1, 0); P.handR.add(syr); P.syringe = syr;
   // testa con volto dipinto: chignon con retina, cuffietta con croce, ciocche ai lati
-  const head = new THREE.Group(); head.position.y = 0.56; torso.add(head); P.head = head;
+  const head = new THREE.Group(); head.position.y = 0.6; head.scale.setScalar(1.25); torso.add(head); P.head = head;
   head.add(mesh(headGeo(), new THREE.MeshLambertMaterial({ map: faceTexture('smile', false, 'nurse') })));
   for (const s of [-1, 1]) head.add(sph(0.03, m.skin, s * 0.176, -0.015, 0, 0.5, 1.1, 0.8));
   const hc = new THREE.Mesh(new THREE.SphereGeometry(0.205, 30, 18, 0, Math.PI, 0, Math.PI * 0.82), m.hair); hc.scale.set(0.98, 1.1, 1.0); hc.position.set(0, -0.06, 0.02); head.add(hc);
