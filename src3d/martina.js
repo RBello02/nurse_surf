@@ -24,6 +24,15 @@ function hairGrad(geo, yTop, yBot) {
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return geo;
 }
+export function hairCapGeo(theta) {                                    // calotta con attaccatura naturale (fronte libera, tempie coperte)
+  const g = new THREE.SphereGeometry(0.208, 36, 22, 0, Math.PI * 2, 0, theta), pp = g.attributes.position;
+  for (let i = 0; i < pp.count; i++) {
+    const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i);
+    if (z + 0.02 < 0.02) { const u = Math.min(1, Math.max(0, (Math.abs(x) / 0.19 - 0.3) / 0.5)), hl = 0.125 - 0.17 * u * u * (3 - 2 * u); if (y * 1.1 < hl) pp.setY(i, hl / 1.1); }
+  }
+  g.computeVertexNormals();
+  return g;
+}
 export const capsule = (r, len, mat, x = 0, y = 0, z = 0) => mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat, x, y, z);
 // arto affusolato (profilo tornito): pts = [[raggio, y], ...] dall'attaccatura verso il basso; fold = pieghe del tessuto
 export function limb(pts0, mat, fold = 0, x = 0, y = 0, z = 0) {
@@ -120,17 +129,22 @@ export function buildMartina(outfit = 'uniforme') {
   }
   const shreds = new THREE.Group(); shreds.visible = false; torso.add(shreds); parts.shreds = shreds;
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const sh = box(0.06, 0.1 - i * 0.02, 0.02, mats.top, s * (0.24 - i * 0.04), 0.5 - i * 0.03, -0.12); sh.rotation.z = s * (0.5 + i * 0.3); shreds.add(sh); }
-  const belly = sph(0.46, mats.skin, 0, 0.18, -0.06, 1, 0.9, 0.95); belly.visible = false; torso.add(belly); parts.belly = belly;
-  const maw = new THREE.Group(); maw.visible = false; body.add(maw); parts.mawashi = maw;
-  maw.add(cyl(0.5, 0.45, 0.1, mats.bord, 0, 0.88, -0.02, 28)); maw.add(box(0.14, 0.12, 0.03, mats.gold, 0, 0.88, -0.5));
-  for (let i = -4; i <= 4; i++) maw.add(box(0.07, 0.34, 0.012, i % 2 ? mats.bord : lam(0x9a2b47), i * 0.075, 0.68, -0.5 + Math.abs(i) * 0.012));
+  // sumo: pancione e petto tondi, mawashi bordeaux con grembiule a strisce
+  const sumoG = new THREE.Group(); sumoG.visible = false; torso.add(sumoG); parts.belly = sumoG;
+  sumoG.add(sph(0.52, mats.skin, 0, 0.1, -0.04, 1.0, 0.82, 0.92, 28));
+  sumoG.add(sph(0.36, mats.skin, 0, 0.43, -0.02, 1.2, 0.72, 0.82, 24));
+  sumoG.add(sph(0.022, lam(0xc08a68), 0, 0.12, -0.5, 1, 1, 0.5));
+  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.066, 10, 40), mats.bord); belt.rotation.x = Math.PI / 2; belt.scale.set(1, 0.92, 1); belt.position.set(0, -0.12, -0.03); sumoG.add(belt);
+  for (let i = -5; i <= 5; i++) { const st = box(0.075, 0.34, 0.014, i % 2 ? mats.bord : lam(0x9a2b47), i * 0.08, -0.3, -0.45 - (5 - Math.abs(i)) * 0.0 + Math.abs(i) * 0.012); st.rotation.y = i * 0.07; sumoG.add(st); sumoG.add(box(0.075, 0.03, 0.016, mats.gold, i * 0.08, -0.46, -0.45 + Math.abs(i) * 0.012).rotateY(i * 0.07)); }
+  sumoG.add(box(0.16, 0.1, 0.04, mats.gold, 0, -0.1, -0.5));
+  parts.mawashi = new THREE.Group();
   // collo
   torso.add(capsule(0.045, 0.1, mats.skin, 0, 0.6, 0.005));
 
   // ---- braccia ----
   function arm(side) {
     const sh = new THREE.Group(); sh.position.set(side * 0.255, 0.5, 0);
-    sh.add(sph(0.058, mats.top, 0, 0, 0));                                              // spalla
+    const pad = sph(0.058, mats.top, 0, 0, 0); sh.add(pad); const padSkin = sph(0.06, mats.skin, 0, 0, 0); padSkin.visible = false; sh.add(padSkin);   // spalla
     const upper = limb([[0.045, 0], [0.046, -0.05], [0.04, -0.14], [0.034, -0.28]], mats.skin); sh.add(upper);
     const sLen = O.sleeves === 'short' ? 0.15 : 0.28; const sleeveU = limb([[0.062, 0], [0.066, -sLen * 0.4], [0.06, -sLen]], mats.top, O.wide ? 0.04 : 0.01); sh.add(sleeveU);
     const el = new THREE.Group(); el.position.y = -0.28; sh.add(el);
@@ -148,7 +162,7 @@ export function buildMartina(outfit = 'uniforme') {
       const b2 = new THREE.Mesh(new THREE.TorusGeometry(0.037, 0.005, 8, 18), mats.metal); b2.rotation.x = Math.PI / 2; b2.position.y = -0.235; el.add(b2);
     }
     torso.add(sh);
-    return { sh, el, upper, fore, sleeveU, sleeveF, hand };
+    return { sh, el, upper, fore, sleeveU, sleeveF, hand, pad, padSkin };
   }
   parts.armL = arm(-1); parts.armR = arm(1);
 
@@ -161,18 +175,11 @@ export function buildMartina(outfit = 'uniforme') {
     head.add(sph(0.011, mats.metal, s * 0.182, -0.062, -0.005)); head.add(sph(0.016, mats.metal, s * 0.182, -0.085, -0.005, 0.7, 1.1, 0.7));
   }
   // capelli: calotta, riga in mezzo, due lunghe ciocche davanti e tenda dietro (tutto con sfumatura caramello)
-  const swing = new THREE.Group(); swing.position.y = 0.06; head.add(swing); parts.hairSwing = swing;
+  const hairG = new THREE.Group(); head.add(hairG); parts.hairG = hairG;
+  const swing = new THREE.Group(); swing.position.y = 0.06; hairG.add(swing); parts.hairSwing = swing;
   const mk = (geo, yT, yB) => new THREE.Mesh(hairGrad(geo, yT, yB), hairMat);
   // calotta di capelli con attaccatura alta (fronte libera, riga in mezzo) invece della frangetta
-  const hairCap = (theta, yT, yB) => {
-    const g = new THREE.SphereGeometry(0.208, 36, 22, 0, Math.PI * 2, 0, theta), pp = g.attributes.position;
-    for (let i = 0; i < pp.count; i++) {
-      const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i);
-      if (z + 0.02 < 0.02) { const u = Math.min(1, Math.max(0, (Math.abs(x) / 0.19 - 0.3) / 0.5)), hl = 0.125 - 0.17 * u * u * (3 - 2 * u); if (y * 1.1 < hl) pp.setY(i, hl / 1.1); }   // fronte libera al centro, tempie coperte dalla riga in mezzo
-    }
-    g.computeVertexNormals();
-    return mk(g, yT, yB);
-  };
+  const hairCap = (theta, yT, yB) => mk(hairCapGeo(theta), yT, yB);
   const capBack = hairCap(Math.PI * 0.82, 0.2, -0.6); capBack.scale.set(1.02, 1.13, 1.04); capBack.position.set(0, -0.065, 0.02); swing.add(capBack);
   const part = box(0.006, 0.004, 0.2, mats.hairSh, 0, 0.17, -0.02); part.rotation.x = 0.15;       // riga in mezzo
   if (outfit === 'casual') {
@@ -184,16 +191,23 @@ export function buildMartina(outfit = 'uniforme') {
     const nape = mk(new THREE.SphereGeometry(0.19, 22, 14, 0, Math.PI, 0, Math.PI * 0.5), 0.1, -0.2); nape.scale.set(0.95, 0.8, 0.9); nape.position.set(0, 0.03, 0.06); nape.rotation.x = -0.4; swing.add(nape);   // tirata dietro
     for (const s of [-1, 1]) {
       const strand = mk(new THREE.CapsuleGeometry(0.011, 0.17, 4, 8), 0.1, -0.14); strand.scale.set(0.8, 1, 0.7);
-      strand.position.set(s * 0.178, -0.07, -0.05); strand.rotation.set(0.05, 0, s * 0.05); head.add(strand);
+      strand.position.set(s * 0.178, -0.07, -0.05); strand.rotation.set(0.05, 0, s * 0.05); hairG.add(strand);
     }
     parts.hairUp = true;
   } else {
     const curtain = mk(new THREE.CylinderGeometry(0.205, 0.2, 0.62, 28, 10, true, -Math.PI * 0.64, Math.PI * 1.28), 0.31, -0.31); curtain.position.set(0, -0.32, 0.0); swing.add(curtain);
     for (const s of [-1, 1]) {
       const lock = mk(new THREE.CapsuleGeometry(0.045, 0.52, 4, 10), 0.28, -0.3); lock.scale.set(0.8, 1, 0.42);
-      lock.position.set(s * 0.175, -0.2, -0.085); lock.rotation.set(0.03, 0, s * 0.1); head.add(lock);
+      lock.position.set(s * 0.175, -0.2, -0.085); lock.rotation.set(0.03, 0, s * 0.1); hairG.add(lock);
     }
   }
+  // sumo: capelli neri lucidi tirati indietro con il chignon piegato in avanti (chonmage)
+  const sumoHair = new THREE.Group(); sumoHair.visible = false; head.add(sumoHair); parts.sumoHair = sumoHair;
+  const oil = std(0x1a1210, 0.35, 0.1);
+  const sCap = new THREE.Mesh(hairCapGeo(Math.PI * 0.6), oil); sCap.scale.set(1.02, 1.12, 1.04); sCap.position.set(0, -0.065, 0.02); sumoHair.add(sCap);
+  sumoHair.add(cyl(0.035, 0.045, 0.1, oil, 0, 0.23, -0.02, 14));
+  const knot = sph(0.07, oil, 0, 0.3, -0.09, 1.0, 0.55, 1.5); knot.rotation.x = 0.25; sumoHair.add(knot);
+  sumoHair.add(box(0.05, 0.014, 0.014, mats.bord, 0, 0.255, -0.04));
   // volto
   // cresta e becco (solo gallina)
   const hen = new THREE.Group(); hen.visible = false; head.add(hen); parts.henHead = hen;
@@ -202,17 +216,30 @@ export function buildMartina(outfit = 'uniforme') {
   hen.add(sph(0.032, mats.red, 0, -0.115, -0.2, 0.8, 1.5, 0.7));
   parts.face = { hen, mat: faceMat }; parts.expr = 'smile'; parts.skinKey = 'martina'; parts.clock = Math.random() * 3; parts.init = false;
 
-  // ---- gallina ----
+  // ---- gallina (coccode'): corpo a uovo, collo, coda a ventaglio, ali che sbattono, zampe arancioni con tre dita ----
   const henBody = new THREE.Group(); henBody.visible = false; root.add(henBody); parts.henBody = henBody;
-  henBody.add(sph(0.5, mats.cream, 0, 0.68, 0.02, 0.95, 0.85, 1.05, 24));
+  const feather = std(0xfdfdf7, 0.9, 0), cream = lam(0xf5ecd7);
+  henBody.add(sph(0.46, feather, 0, 0.62, 0.06, 0.98, 0.95, 1.22, 28));
+  henBody.add(sph(0.33, feather, 0, 0.68, -0.3, 1, 1.05, 0.95, 24));                       // petto
+  const henNeck = cyl(0.11, 0.19, 0.34, feather, 0, 0.82, -0.36, 18); henNeck.rotation.x = -0.4; henBody.add(henNeck);
+  for (let i = 0; i < 7; i++) { const f = sph(0.08, i % 2 ? feather : cream, Math.cos(i * 0.9) * 0.12, 0.8 + (i % 3) * 0.04, -0.3 - Math.abs(Math.sin(i)) * 0.14, 1, 0.7, 1); henBody.add(f); }  // gorgiera di piume
+  const tail = new THREE.Group(); tail.position.set(0, 0.8, 0.5); henBody.add(tail); parts.henTail = tail;
+  for (let i = -3; i <= 3; i++) { const t = sph(0.15, Math.abs(i) % 2 ? cream : feather, 0, 0.18, 0.04, 0.3, 1.3, 0.35); const g = new THREE.Group(); g.rotation.z = i * 0.26; g.add(t); g.position.z = Math.abs(i) * 0.02; tail.add(g); }
+  parts.henWings = [];
   for (const s of [-1, 1]) {
-    const wing = sph(0.3, mats.cream, s * 0.5, 0.68, 0.05, 0.3, 0.9, 0.7); wing.rotation.z = s * 0.35; henBody.add(wing); parts.henWing = parts.henWing || []; parts.henWing.push(wing);
-    const leg = cyl(0.028, 0.028, 0.3, mats.orange, s * 0.15, 0.2, 0.0); henBody.add(leg);
-    for (const a of [-0.5, 0, 0.5]) { const toe = box(0.03, 0.02, 0.14, mats.orange, s * 0.15 + a * 0.08, 0.02, -0.07); toe.rotation.y = a; henBody.add(toe); }
+    const piv = new THREE.Group(); piv.position.set(s * 0.4, 0.84, 0.02); henBody.add(piv);
+    const w = sph(0.3, cream, s * 0.04, -0.28, 0.03, 0.17, 1.0, 0.85); piv.add(w); piv.add(sph(0.14, feather, s * 0.04, -0.52, 0.06, 0.22, 1.0, 0.55));
+    parts.henWings.push({ piv, s });
   }
-  for (let i = -2; i <= 2; i++) { const f = sph(0.16, i % 2 ? mats.white : mats.cream, i * 0.12, 0.86, 0.42, 0.5, 1.2, 0.4); f.rotation.z = -i * 0.3; henBody.add(f); }
-  henBody.add(sph(0.2, mats.cream, 0, 1.0, -0.2, 1.1, 0.7, 0.7));
-  henBody.add(sph(0.025, mats.bord, 0, 0.95, -0.52, 4.5, 0.6, 1)); // fascia/cintura rimasta
+  parts.henLegs = [];
+  for (const s of [-1, 1]) {
+    const lg = new THREE.Group(); lg.position.set(s * 0.14, 0.4, 0.06); henBody.add(lg);
+    lg.add(sph(0.13, feather, 0, 0.06, 0, 1, 1.1, 1.1));                                        // coscia piumata
+    lg.add(cyl(0.028, 0.034, 0.34, mats.orange, 0, -0.14, 0, 10));
+    for (const a of [-0.5, 0, 0.5]) { const toe = box(0.03, 0.022, 0.15, mats.orange, a * 0.09, -0.31, -0.07); toe.rotation.y = a; lg.add(toe); }
+    lg.add(box(0.025, 0.02, 0.08, mats.orange, 0, -0.31, 0.06));
+    parts.henLegs.push(lg);
+  }
   parts.shadow = blobShadow(1.1, 0.35); root.add(parts.shadow);
 
   parts.outfit = outfit; parts.O = O; parts.form = 'normal';
@@ -227,19 +254,20 @@ export function setForm(M, form) {
   M.form = form;
   const sc = M.hs;
   mats.skin.color.setHex(form === 'hulk' ? GREEN : SKIN);
-  mats.shoe.color.setHex(form === 'hulk' ? GREEN : O.shoe);
-  mats.pants.color.setHex(form === 'sumo' ? SKIN : O.pants);
+  mats.shoe.color.setHex(form === 'hulk' ? GREEN : form === 'sumo' ? SKIN : O.shoe);
+  mats.pants.color.setHex(form === 'sumo' ? SKIN : O.pants); mats.sole.color.setHex(form === 'sumo' ? SKIN : 0x2a2a30);
   const big = form === 'hulk', sumo = form === 'sumo', hen = form === 'hen';
-  M.bare.visible = big || sumo; M.muscles.visible = big; M.shreds.visible = big; M.belly.visible = sumo; M.mawashi.visible = sumo;
+  M.bare.visible = big || sumo; M.muscles.visible = big; M.shreds.visible = big; M.belly.visible = sumo; M.hairG.visible = !(sumo || hen); M.sumoHair.visible = sumo;
   M.torsoMesh.visible = !(big || sumo || hen); M.clothes.visible = !(big || sumo || hen);
   for (const a of [M.armL, M.armR]) {
+    a.pad.visible = !(big || sumo); a.padSkin.visible = big || sumo; a.padSkin.scale.setScalar(big ? 1.9 : sumo ? 1.7 : 1);
     a.sleeveU.visible = !(big || sumo); if (a.sleeveF) a.sleeveF.visible = !(big || sumo);
     a.upper.scale.set(big ? 1.9 : sumo ? 1.7 : 1, 1, big ? 1.9 : sumo ? 1.7 : 1); a.fore.scale.copy(a.upper.scale); a.hand.scale.setScalar(big ? 1.7 : sumo ? 1.4 : 1);
     a.sh.visible = !hen;
   }
   for (const l of [M.legL, M.legR]) { l.hip.visible = !hen; l.thigh.scale.set(sumo ? 1.5 : big ? 1.3 : 1, 1, sumo ? 1.5 : big ? 1.3 : 1); l.shin.scale.copy(l.thigh.scale); }
   M.henBody.visible = hen; M.face.hen.visible = hen; M.skinKey = big ? 'hulk' : 'martina'; M.init = false;
-  M.torso.position.y = hen ? 0.3 : 0.92;
+  M.torso.position.y = hen ? 0.3 : 0.92; M.head.position.set(0, hen ? 0.86 : 0.8, hen ? -0.5 : 0);
   M.head.scale.setScalar(HEAD * (big ? 0.85 : 1));
   M.root.scale.set(sc * (big ? 1.5 : sumo ? 1.45 : hen ? 1.25 : 1), sc * (big ? 1.38 : sumo ? 0.98 : hen ? 1.25 : 1), sc * (big ? 1.42 : sumo ? 1.45 : hen ? 1.25 : 1));
   face(M, big || sumo ? 'angry' : hen ? 'hen' : 'smile');
@@ -303,15 +331,26 @@ export function pose(M, name, t, k = {}) {
     R(armL.sh, br, 0, 0.1, 8); R(armR.sh, -br, 0, -0.1, 8); R(armL.el, 0.15 + br, 0, 0, 8); R(armR.el, 0.15 - br, 0, 0, 8);
     R(torso, 0, sw * 0.6, sw * 0.5, 8); by = br; hy = Math.sin(t * 0.7) * 0.05; hair = Math.sin(t * 2) * 0.03;
   }
-  if (sumo && name !== 'slide' && name !== 'jump') {          // posa del sumo: gambe larghe e piegate, braccia larghe
-    R(legL.hip, -0.1, 0, -0.45); R(legR.hip, -0.1, 0, 0.45); R(legL.knee, -0.35); R(legR.knee, -0.35);
-    R(armL.sh, 0.2, 0, 0.7); R(armR.sh, 0.2, 0, -0.7);
-    by = -0.08 + Math.abs(Math.sin(t * 5)) * 0.03;
+  if (sumo && name !== 'slide' && name !== 'jump') {          // shiko: gambe larghe e piegate, a turno alza e pesta un piede, pugni sulle ginocchia
+    const stL = Math.max(0, Math.sin(t * 3)), stR = Math.max(0, -Math.sin(t * 3));
+    R(legL.hip, -0.12 - stL * 0.9, 0, -0.5 - stL * 0.15, 16); R(legR.hip, -0.12 - stR * 0.9, 0, 0.5 + stR * 0.15, 16);
+    R(legL.knee, -0.45 - stL * 0.8, 0, 0, 16); R(legR.knee, -0.45 - stR * 0.8, 0, 0, 16);
+    R(armL.sh, 0.1, 0, 0.55, 14); R(armR.sh, 0.1, 0, -0.55, 14); R(armL.el, 0.9, 0, 0, 14); R(armR.el, 0.9, 0, 0, 14);
+    R(torso, 0.08, Math.sin(t * 3) * 0.06, 0, 12);
+    by = -0.12 + Math.abs(Math.sin(t * 3)) * 0.05; hx = 0.1; hy = 0;
   }
   rot(M.body, brx, bry, brz, 14, sn); pos(M.body, bx, by, bz, 22, sn);
   rot(M.head, hx, hy, hz, 14, sn);
   if (M.hairSwing) rot(M.hairSwing, hair, 0, 0, M.hairUp ? 9 : 7, sn);
-  if (hen) { M.henBody.rotation.set(0, 0, Math.sin(t * 14) * 0.05); M.body.position.y = Math.abs(Math.sin(t * 12)) * 0.05; if (M.henWing) M.henWing.forEach((w, i) => { w.rotation.z = (i ? 1 : -1) * (0.35 + Math.abs(Math.sin(t * 16)) * 0.6); }); }
+  if (hen) {                                                  // gallina: becchetta, ali che sbattono, zampette che corrono, coda che oscilla
+    const roarH = name === 'roar', fl = Math.abs(Math.sin(t * (roarH ? 16 : 9)));
+    M.henBody.rotation.set(0, 0, Math.sin(t * 7) * 0.05);
+    pos(M.body, 0, Math.abs(Math.sin(t * 8)) * 0.05, 0, 22, sn);
+    M.henWings.forEach((w) => rot(w.piv, 0, 0, w.s * (0.2 + fl * (roarH ? 1.1 : 0.35)), 24, sn));
+    M.henLegs.forEach((lg, i) => rot(lg, Math.sin(t * 10 + i * Math.PI) * 0.5, 0, 0, 24, sn));
+    rot(M.henTail, Math.sin(t * 6) * 0.12, 0, Math.sin(t * 5) * 0.1, 12, sn);
+    rot(M.head, Math.sin(t * 8) * 0.18 + (roarH ? -0.3 : 0), Math.sin(t * 4) * 0.12, 0, 16, sn);
+  }
   if (k.lean) { M.root.rotation.z = -k.lean * 0.22; M.root.rotation.y = (M.yaw || 0) - k.lean * 0.38; }
   applyFace(M, (M.clock % 3.6) > 3.47 && M.expr !== 'angry' && M.expr !== 'shout');
 }

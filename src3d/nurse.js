@@ -1,6 +1,6 @@
 // L'infermiera inseguitrice in 3D: divisa bianca, cuffietta con croce rossa e siringa "PFIZER" gigante sopra la testa.
 import { THREE, lam, std, mesh, box, rbox, cyl, sph, canvasTex, blobShadow } from './util.js';
-import { capsule, torsoGeo, headGeo, limb } from './martina.js';
+import { capsule, torsoGeo, headGeo, limb, hairCapGeo } from './martina.js';
 import { faceTexture } from './face.js';
 import { rot, pos, getDT } from './anim.js';
 
@@ -106,12 +106,15 @@ export function buildNurse() {
   const head = new THREE.Group(); head.position.y = 0.6; head.scale.setScalar(1.25); torso.add(head); P.head = head;
   head.add(mesh(headGeo(), new THREE.MeshLambertMaterial({ map: faceTexture('smile', false, 'nurse') })));
   for (const s of [-1, 1]) head.add(sph(0.03, m.skin, s * 0.176, -0.015, 0, 0.5, 1.1, 0.8));
-  const hc = new THREE.Mesh(new THREE.SphereGeometry(0.205, 30, 18, 0, Math.PI, 0, Math.PI * 0.82), m.hair); hc.scale.set(0.98, 1.1, 1.0); hc.position.set(0, -0.06, 0.02); head.add(hc);
-  const hf = new THREE.Mesh(new THREE.SphereGeometry(0.205, 30, 12, 0, Math.PI, 0, Math.PI * 0.33), m.hair); hf.scale.set(0.98, 1.1, 1.0); hf.position.set(0, -0.06, 0.005); hf.rotation.order = 'YXZ'; hf.rotation.set(0.3, Math.PI, 0); head.add(hf);
-  head.add(sph(0.095, m.hair, 0, 0.1, 0.17, 1, 1, 0.95));
-  for (const s of [-1, 1]) head.add(mesh(new THREE.CapsuleGeometry(0.03, 0.2, 4, 8), m.hair, s * 0.178, -0.1, -0.03));
-  const cap = cyl(0.17, 0.2, 0.09, m.white, 0, 0.2, -0.01, 28); head.add(cap);
-  head.add(box(0.03, 0.07, 0.01, m.red, 0, 0.21, -0.2)); head.add(box(0.07, 0.03, 0.01, m.red, 0, 0.21, -0.2));
+  // capelli castani raccolti: calotta con attaccatura e riga laterale, chignon basso con retina, ciocche ai lati, cuffietta inclinata con croce
+  const hairM = std(0x6b4630, 0.55, 0);
+  const hcap = new THREE.Mesh(hairCapGeo(Math.PI * 0.66), hairM); hcap.scale.set(1.02, 1.13, 1.04); hcap.position.set(0, -0.065, 0.02); head.add(hcap);
+  const bun = sph(0.105, hairM, 0, 0.0, 0.2, 1.05, 0.95, 0.9); head.add(bun);
+  const net = new THREE.Mesh(new THREE.SphereGeometry(0.112, 16, 10), new THREE.MeshBasicMaterial({ color: 0x2a1810, wireframe: true, transparent: true, opacity: 0.35 })); net.position.copy(bun.position); net.scale.copy(bun.scale); head.add(net);
+  for (const s of [-1, 1]) { const st = mesh(new THREE.CapsuleGeometry(0.012, 0.17, 4, 8), hairM, s * 0.178, -0.07, -0.05); st.scale.set(0.8, 1, 0.7); head.add(st); }
+  const capG = new THREE.Group(); capG.position.set(0, 0.2, 0.05); capG.rotation.x = -0.22; head.add(capG);
+  capG.add(cyl(0.15, 0.175, 0.075, m.white, 0, 0, 0, 28));
+  capG.add(box(0.03, 0.06, 0.01, m.red, 0, 0.0, -0.172)); capG.add(box(0.06, 0.03, 0.01, m.red, 0, 0.0, -0.172));
   P.shadow = blobShadow(1.3, 0.35); root.add(P.shadow);
   root.scale.setScalar(0.85);
   return P;
