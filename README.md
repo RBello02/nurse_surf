@@ -17,11 +17,11 @@ prospettiva, personaggi e ostacoli con bordi morbidi, testo con font arrotondato
 
 ## Gioca subito
 
-**[Apri il gioco](https://rawcdn.githack.com/RBello02/nurse_surf/71ca0c804bf21f2af340e4119840bf62a3ac5f85/index.html)**: funziona dal browser del telefono, senza installare nulla
-(link: https://rawcdn.githack.com/RBello02/nurse_surf/71ca0c804bf21f2af340e4119840bf62a3ac5f85/index.html).
+**[Apri il gioco](https://rawcdn.githack.com/RBello02/nurse_surf/487879c8f74ad98f64ebe5c3eac893a374bea293/index.html)**: funziona dal browser del telefono, senza installare nulla
+(link: https://rawcdn.githack.com/RBello02/nurse_surf/487879c8f74ad98f64ebe5c3eac893a374bea293/index.html).
 
-**[Apri la versione 3D](https://rawcdn.githack.com/RBello02/nurse_surf/71ca0c804bf21f2af340e4119840bf62a3ac5f85/3d.html)**: stessa partita ma in vero 3D, stile Subway Surfers
-(link: https://rawcdn.githack.com/RBello02/nurse_surf/71ca0c804bf21f2af340e4119840bf62a3ac5f85/3d.html).
+**[Apri la versione 3D](https://rawcdn.githack.com/RBello02/nurse_surf/487879c8f74ad98f64ebe5c3eac893a374bea293/3d.html)**: stessa partita ma in vero 3D, stile Subway Surfers
+(link: https://rawcdn.githack.com/RBello02/nurse_surf/487879c8f74ad98f64ebe5c3eac893a374bea293/3d.html).
 Il codice 3D e' in `src3d/` (three.js); dopo ogni modifica si ricompila con `npm run build3d` (genera `js3d/nurse3d.js`, da committare).
 Il link e' fissato a una versione precisa: dopo ogni aggiornamento viene rigenerato con `node scripts/update-play-link.js`.
 
