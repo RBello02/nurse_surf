@@ -168,12 +168,12 @@ export function buildMartina(outfit = 'uniforme') {
     const g = new THREE.SphereGeometry(0.208, 36, 22, 0, Math.PI * 2, 0, theta), pp = g.attributes.position;
     for (let i = 0; i < pp.count; i++) {
       const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i);
-      if (z + 0.02 < 0.02) { const hl = 0.125 + 0.025 * Math.min(1, Math.pow(Math.abs(x) / 0.19, 3)); if (y * 1.1 < hl) pp.setY(i, hl / 1.1); }
+      if (z + 0.02 < 0.02) { const u = Math.min(1, Math.max(0, (Math.abs(x) / 0.19 - 0.3) / 0.5)), hl = 0.125 - 0.17 * u * u * (3 - 2 * u); if (y * 1.1 < hl) pp.setY(i, hl / 1.1); }   // fronte libera al centro, tempie coperte dalla riga in mezzo
     }
     g.computeVertexNormals();
     return mk(g, yT, yB);
   };
-  const capBack = hairCap(Math.PI * 0.82, 0.2, -0.6); capBack.scale.set(0.98, 1.1, 1.0); capBack.position.set(0, -0.06, 0.02); swing.add(capBack);
+  const capBack = hairCap(Math.PI * 0.82, 0.2, -0.6); capBack.scale.set(1.02, 1.13, 1.04); capBack.position.set(0, -0.065, 0.02); swing.add(capBack);
   const part = box(0.006, 0.004, 0.2, mats.hairSh, 0, 0.17, -0.02); part.rotation.x = 0.15;       // riga in mezzo
   if (outfit === 'casual') {
     // vestito di laurea: capelli RACCOLTI in uno chignon alto con elastico bordeaux, riga in mezzo e due ciocche libere sul viso
